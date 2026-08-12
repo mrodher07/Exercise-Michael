@@ -365,7 +365,9 @@ const POR_GRUPO: Record<Grupo, Fila[]> = {
     ['Plancha lateral', 'peso corporal', [], { medida: 'tiempo', unilateral: true }],
     ['Plancha con lastre', 'disco', ['Lumbares'], { medida: 'peso-tiempo' }],
     ['Encogimientos', 'peso corporal', [], { medida: 'reps' }],
-    ['Encogimientos en máquina', 'máquina', []],
+    // «abdominales» en el nombre no es un adorno: la máquina de encogimientos de trapecio
+    // se llama igual, y como el id sale del nombre, las dos compartirían historial.
+    ['Encogimientos abdominales en máquina', 'máquina', []],
     ['Encogimientos en polea arrodillado', 'polea', []],
     ['Encogimientos inversos', 'peso corporal', [], { medida: 'reps' }],
     ['Elevación de piernas colgado', 'peso corporal', [], { medida: 'reps' }],

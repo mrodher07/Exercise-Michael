@@ -4,3 +4,6 @@ dist
 *.local
 tsconfig.tsbuildinfo
 *.tsbuildinfo
+
+# Lo que deja el generador del catálogo de Dart al compilar el catálogo de TypeScript.
+.tmp-gen

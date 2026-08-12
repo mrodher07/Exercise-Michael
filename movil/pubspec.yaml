@@ -1,0 +1,32 @@
+name: fitlog
+description: "Registro de entrenos: qué hiciste, con cuánto y cómo va la cosa."
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.12.0
+
+dependencies:
+  flutter:
+    sdk: flutter
+
+  # Dónde guardar los archivos de datos. Es la única forma de saber la carpeta de la
+  # aplicación en Android sin escribir código nativo.
+  path_provider: ^2.1.5
+
+  # El aviso del descanso cuando la aplicación no está delante. Es la razón de que esto sea
+  # una app de Android y no la web.
+  flutter_local_notifications: ^19.4.2
+
+  # Sacar la copia de seguridad a donde el usuario quiera (Drive, correo, WhatsApp) y
+  # volver a meterla.
+  share_plus: ^12.0.0
+  file_picker: ^10.3.7
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+flutter:
+  uses-material-design: true

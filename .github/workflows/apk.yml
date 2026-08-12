@@ -1,0 +1,74 @@
+# Compila el APK de Android y lo deja descargable.
+#
+# Existe por una razón muy concreta: para instalar la aplicación en un móvil hace falta un
+# APK, y compilarlo pide el SDK de Android (unos gigas, y `dl.google.com` no siempre está
+# accesible según dónde se trabaje). Aquí lo hace GitHub, que ya trae el SDK instalado en sus
+# máquinas, y el archivo queda colgado del propio flujo.
+#
+# Cómo instalarlo en el móvil, la primera vez:
+#
+#   1. En GitHub: pestaña «Actions» → esta acción → la última ejecución en verde.
+#   2. Abajo, en «Artifacts», descarga «fitlog-apk». Es un zip con el APK dentro.
+#   3. Descomprímelo en el móvil y ábrelo. Android pedirá permiso para instalar aplicaciones
+#      de fuera de Play Store: se lo das a la aplicación con la que lo estés abriendo (el
+#      explorador de archivos o el navegador). Es tu propia aplicación firmada con la clave
+#      de depuración, no una descarga de un desconocido.
+#
+# Para las siguientes veces basta con instalar el APK nuevo encima: los datos se conservan
+# porque van en la carpeta de la aplicación, no en el APK.
+
+name: APK de Android
+
+on:
+  push:
+    branches: ['**']
+    paths:
+      - 'movil/**'
+      - '.github/workflows/apk.yml'
+  # Y a mano, cuando quieras un APK sin haber tocado nada.
+  workflow_dispatch:
+
+jobs:
+  compilar:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Java 17
+        uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: '17'
+
+      - name: Flutter
+        uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Dependencias
+        working-directory: movil
+        run: flutter pub get
+
+      # El análisis y las pruebas van antes de compilar: si algo está roto, mejor saberlo
+      # aquí que al abrir la aplicación en el móvil.
+      - name: Analizar
+        working-directory: movil
+        run: flutter analyze
+
+      - name: Pruebas
+        working-directory: movil
+        run: flutter test
+
+      - name: Compilar el APK
+        working-directory: movil
+        run: flutter build apk --release
+
+      - name: Dejar el APK descargable
+        uses: actions/upload-artifact@v4
+        with:
+          name: fitlog-apk
+          path: movil/build/app/outputs/flutter-apk/app-release.apk
+          # Noventa días es lo máximo que guarda GitHub; de todas formas, con volver a
+          # lanzar la acción se genera otro.
+          retention-days: 90
