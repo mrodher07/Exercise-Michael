@@ -33,6 +33,16 @@ on:
   # Y a mano, cuando quieras un APK sin haber tocado nada.
   workflow_dispatch:
 
+# Una compilación a la vez, y si llega otra se cancela la que estaba.
+#
+# Todas las ejecuciones escriben en el **mismo** archivo del mismo Release, así que dos a la
+# vez —lo que pasa, por ejemplo, al empujar el mismo commit a una rama y a `main`— pueden
+# pisarse subiendo el APK. Además la que se cancela no aporta nada: la que la adelanta trae
+# ese commit o uno más nuevo.
+concurrency:
+  group: apk
+  cancel-in-progress: true
+
 jobs:
   compilar:
     runs-on: ubuntu-latest
