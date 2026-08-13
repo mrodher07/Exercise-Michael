@@ -23,11 +23,23 @@ generador, para que las dos no puedan acabar diciendo cosas distintas.
 
 No hace falta instalar nada en el ordenador: la compila GitHub.
 
-1. En GitHub, pestaña **Actions** → **APK de Android** → la última ejecución en verde.
-2. Abajo, en **Artifacts**, descarga `fitlog-apk` (un zip con el APK dentro).
-3. Descomprímelo en el móvil y ábrelo. Android pedirá permiso para instalar aplicaciones de
-   fuera de Play Store; se lo das al explorador de archivos o al navegador con el que lo
-   abras.
+**El enlace, que no cambia nunca:**
+
+<https://github.com/mrodher07/Exercise-Michael/releases/latest/download/fitlog.apk>
+
+1. Ábrelo en el móvil (con la sesión de GitHub iniciada, que el repositorio es privado) y
+   descarga el archivo.
+2. Ábrelo. Android pedirá permiso para instalar aplicaciones de fuera de Play Store; se lo das
+   al navegador o al explorador de archivos con el que lo abras. Si sale Play Protect,
+   «Instalar de todas formas».
+
+Ese enlace apunta siempre al último APK compilado, así que vale para instalar y para
+actualizar, y se puede guardar en favoritos. Sale del Release de la etiqueta `apk`, que el
+flujo reescribe en cada compilación verde.
+
+Si alguna vez hace falta el APK de una compilación concreta y no el último, está como
+artefacto de su ejecución: pestaña **Actions** → **APK de Android** → la ejecución →
+**Artifacts** → `fitlog-apk` (un zip, y caduca a los 90 días).
 
 Para actualizarla, instala el APK nuevo encima: los datos no se van, porque viven en la
 carpeta de la aplicación y no en el APK. Eso funciona porque **todos los APK se firman con la

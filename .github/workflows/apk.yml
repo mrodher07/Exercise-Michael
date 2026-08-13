@@ -3,16 +3,15 @@
 # Existe por una razón muy concreta: para instalar la aplicación en un móvil hace falta un
 # APK, y compilarlo pide el SDK de Android (unos gigas, y `dl.google.com` no siempre está
 # accesible según dónde se trabaje). Aquí lo hace GitHub, que ya trae el SDK instalado en sus
-# máquinas, y el archivo queda colgado del propio flujo.
+# máquinas.
 #
-# Cómo instalarlo en el móvil, la primera vez:
+# El APK sale por dos caminos, y el bueno para el móvil es el primero:
 #
-#   1. En GitHub: pestaña «Actions» → esta acción → la última ejecución en verde.
-#   2. Abajo, en «Artifacts», descarga «fitlog-apk». Es un zip con el APK dentro.
-#   3. Descomprímelo en el móvil y ábrelo. Android pedirá permiso para instalar aplicaciones
-#      de fuera de Play Store: se lo das a la aplicación con la que lo estés abriendo (el
-#      explorador de archivos o el navegador). Es tu propia aplicación, no una descarga de un
-#      desconocido.
+#   · Como **Release** de la etiqueta «apk», con un enlace fijo que siempre apunta al último:
+#     .../releases/latest/download/fitlog.apk
+#     Se toca en el móvil y se instala. Sin descomprimir nada y sin caducar.
+#   · Como artefacto del propio flujo, que es un zip y caduca a los 90 días. Se queda por si
+#     hace falta el APK de una compilación concreta.
 #
 # Para las siguientes veces basta con instalar el APK nuevo encima: los datos se conservan
 # porque van en la carpeta de la aplicación, no en el APK, y porque todos los APK que salen de
@@ -34,6 +33,10 @@ on:
 jobs:
   compilar:
     runs-on: ubuntu-latest
+    # Para poder publicar el Release. Sin esto el permiso por defecto puede ser de sólo
+    # lectura y `gh release` falla con un 403.
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
 
@@ -67,7 +70,59 @@ jobs:
         working-directory: movil
         run: flutter build apk --release
 
-      - name: Dejar el APK descargable
+      # El camino bueno para instalarlo en el móvil: un Release con el APK suelto dentro.
+      #
+      # Es **un solo Release** que se va reescribiendo, con la etiqueta fija «apk», y no uno
+      # por compilación. Así el enlace `/releases/latest/download/fitlog.apk` siempre trae el
+      # último APK y se puede guardar en favoritos del móvil, en vez de tener que buscar cada
+      # vez cuál es la última ejecución. El historial de versiones ya está en los commits; una
+      # lista de APK viejos no le sirve a nadie.
+      #
+      # Se publica después de analizar, pasar las pruebas y compilar, así que lo que hay ahí
+      # colgado nunca es una versión que no arranque. Ojo con esto: cualquier rama que toque
+      # `movil/` y llegue verde hasta aquí reescribe el APK del Release.
+      - name: Publicar el APK en el Release «apk»
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          # Se renombra a fitlog.apk: el nombre del archivo es la mitad del enlace fijo, así
+          # que tiene que ser siempre el mismo.
+          cp movil/build/app/outputs/flutter-apk/app-release.apk fitlog.apk
+          notas=$(cat <<TEXTO
+          APK de FitLog compilado desde \`${GITHUB_SHA:0:7}\` el $(date -u '+%d/%m/%Y a las %H:%M UTC').
+
+          **Descarga directa:** [fitlog.apk](https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/fitlog.apk) — este enlace siempre trae el último.
+
+          ### Instalar
+          1. Toca el enlace en el móvil y descarga el archivo.
+          2. Ábrelo. Android pedirá permiso para instalar aplicaciones de fuera de Play Store:
+             se lo das a la aplicación desde la que lo abras (el navegador o el explorador de
+             archivos).
+          3. Si sale Play Protect, «Instalar de todas formas». Es tu propia aplicación.
+
+          Para actualizar, instala el APK nuevo encima: **los entrenos no se van**, porque
+          viven en la carpeta de la aplicación y todos los APK van firmados con la misma clave.
+          TEXTO
+          )
+          if gh release view apk >/dev/null 2>&1; then
+            # Se actualizan las notas y se pisa el archivo, en vez de borrar el Release y
+            # crearlo otra vez: así el enlace de descarga nunca se queda sin APK detrás, ni
+            # medio segundo. La etiqueta «apk» sigue apuntando al commit donde se creó —una
+            # etiqueta que ya existe no se mueve—, y por eso el commit de verdad va escrito
+            # en las notas.
+            gh release edit apk --notes "$notas"
+            gh release upload apk fitlog.apk --clobber
+          else
+            gh release create apk fitlog.apk \
+              --title 'FitLog · último APK' \
+              --notes "$notas" \
+              --target "$GITHUB_SHA"
+          fi
+
+      # Y el mismo APK como artefacto del flujo, por si algún día hace falta el de una
+      # compilación concreta y no el último.
+      - name: Dejar el APK descargable también aquí
         uses: actions/upload-artifact@v4
         with:
           name: fitlog-apk
