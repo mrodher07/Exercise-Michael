@@ -42,8 +42,8 @@ Hay tres APK publicados y el de arriba es el que quieres:
 
 | archivo | tamaño | para qué |
 |---|---|---|
-| `fitlog-arm64.apk` | ~20 MB | **cualquier móvil de los últimos años** |
-| `fitlog-arm32.apk` | ~18 MB | un teléfono muy viejo, de 32 bits |
+| `fitlog-arm64.apk` | 18 MB | **cualquier móvil de los últimos años** |
+| `fitlog-arm32.apk` | 16 MB | un teléfono muy viejo, de 32 bits |
 | `fitlog.apk` | 51 MB | las tres arquitecturas dentro; el comodín si los otros no instalan |
 
 Que se puedan descargar así depende de que **este repositorio sea público**. Mientras fue

@@ -8,7 +8,7 @@
 # El APK sale por dos caminos, y el bueno para el móvil es el primero:
 #
 #   · Como Release de la etiqueta «apk», con enlaces fijos que siempre traen el último:
-#     .../releases/latest/download/fitlog-arm64.apk   ← el bueno, unos 20 MB
+#     .../releases/latest/download/fitlog-arm64.apk   ← el bueno, 18 MB
 #     .../releases/latest/download/fitlog-arm32.apk   ← teléfonos muy viejos
 #     .../releases/latest/download/fitlog.apk         ← las tres arquitecturas, 51 MB
 #     Se tocan en el móvil y se instalan, sin descomprimir nada y sin caducar.
@@ -93,7 +93,7 @@ jobs:
       #
       # El APK de arriba es «universal»: lleva dentro el código nativo de las tres
       # arquitecturas de Android y por eso pesa 51 MB, de los cuales el móvil usa un tercio.
-      # El de arm64 ronda los 20 MB y vale para cualquier teléfono de los últimos años.
+      # El de arm64 son 18 MB y vale para cualquier teléfono de los últimos años.
       #
       # No es una cuestión de elegancia: una descarga de 51 MB tarda el triple y da el triple
       # de ocasiones a que el gestor de descargas de Android se quede colgado al final —que es
@@ -132,7 +132,7 @@ jobs:
 
           ### Cuál descargar
 
-          **[fitlog-arm64.apk](https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/fitlog-arm64.apk) — éste.** Unos 20 MB, y vale para cualquier móvil de los últimos años.
+          **[fitlog-arm64.apk](https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/fitlog-arm64.apk) — éste.** 18 MB, y vale para cualquier móvil de los últimos años.
 
           Los otros dos son para casos raros: \`fitlog-arm32.apk\` para un teléfono muy viejo, y \`fitlog.apk\` con las tres arquitecturas dentro (51 MB) si ninguno de los otros instala.
 
