@@ -23,9 +23,12 @@ import 'piezas.dart';
 const seriesDeReferencia = 10.0;
 
 class VistaResumen extends StatelessWidget {
-  const VistaResumen({super.key, required this.onIrAEntrenar});
+  const VistaResumen({super.key, required this.onIrAEntrenar, required this.onIrAAjustes});
 
   final VoidCallback onIrAEntrenar;
+
+  /// Para el aviso de la copia de seguridad: el botón lleva a donde se hace.
+  final VoidCallback onIrAAjustes;
 
   @override
   Widget build(BuildContext context) {
@@ -79,6 +82,28 @@ class VistaResumen extends StatelessWidget {
     return ListView(
       padding: const EdgeInsets.fromLTRB(16, 8, 16, 100),
       children: [
+        // El aviso de la copia va aquí, y no sólo en Ajustes, porque Ajustes no se abre nunca
+        // —es su virtud— y un recordatorio donde nadie mira no recuerda nada. Sale sólo
+        // cuando hay entrenos que se perderían y desaparece en cuanto se comparte una copia,
+        // así que no es un adorno permanente que se aprenda a ignorar.
+        if (estado.tocaCopia) ...[
+          const TituloDeSeccion('Copia de seguridad'),
+          Panel(
+            hijo: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: [
+                Aviso(avisoDeCopia(estado.entrenosSinCopiar, estado.ajustes.ultimaCopia)),
+                const SizedBox(height: 10),
+                OutlinedButton.icon(
+                  onPressed: onIrAAjustes,
+                  icon: const Icon(Icons.ios_share),
+                  label: const Text('Guardar una copia'),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
         const TituloDeSeccion('Esta semana'),
         Row(
           children: [

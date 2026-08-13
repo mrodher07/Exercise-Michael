@@ -115,15 +115,26 @@ class VistaAjustes extends StatelessWidget {
         const TituloDeSeccion('Tus datos'),
         PanelPlegable(
           titulo: const Text('Copias de seguridad'),
-          resumen: '${estado.entrenos.length} entrenos',
-          abierto: false,
+          // El resumen es la fecha de la última copia y no el número de entrenos: es lo que
+          // se viene a comprobar aquí, y se lee sin abrir el panel.
+          resumen: textoDeUltimaCopia(estado.ajustes.ultimaCopia),
+          // Abierto si hay algo que copiar, cerrado si no: el panel se abre solo el día que
+          // hay que usarlo.
+          abierto: estado.tocaCopia,
           ayuda: 'Todo se guarda en este móvil, en la carpeta de la aplicación. No hay cuenta '
               'ni servidor, así que nadie más ve tus entrenos — y por lo mismo, si desinstalas '
               'la aplicación o cambias de móvil, se van contigo. La copia es un archivo JSON '
-              'que puedes mandarte a donde quieras y traer al otro móvil.',
+              'que puedes mandarte a donde quieras y traer al otro móvil.\n\n'
+              'La copia automática de Android a Google Drive existe, pero no cuentes con '
+              'ella: sólo restaura al estrenar un móvil, con la misma cuenta, y con una '
+              'aplicación instalada a mano casi nunca llega a dispararse.',
           hijo: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
+              if (estado.tocaCopia) ...[
+                Aviso(avisoDeCopia(estado.entrenosSinCopiar, estado.ajustes.ultimaCopia)),
+                const SizedBox(height: 10),
+              ],
               OutlinedButton.icon(
                 onPressed: () => _exportar(context, estado),
                 icon: const Icon(Icons.ios_share),
@@ -184,9 +195,15 @@ class VistaAjustes extends StatelessWidget {
     final archivo = File('${carpeta.path}/$nombre');
     await archivo.writeAsString(json, flush: true);
     if (!context.mounted) return;
-    await SharePlus.instance.share(
+    final resultado = await SharePlus.instance.share(
       ShareParams(files: [XFile(archivo.path)], fileNameOverrides: [nombre]),
     );
+    // Sólo cuenta como copia si la compartió de verdad. Si cerró el menú sin elegir a dónde
+    // (`dismissed`), no hay ningún archivo en ninguna parte y decir que sí lo hay es peor que
+    // no llevar la cuenta: el aviso desaparecería justo cuando más falta hace.
+    if (resultado.status == ShareResultStatus.dismissed) return;
+    estado.apuntarCopia();
+    if (context.mounted) avisar(context, 'Copia compartida');
   }
 
   Future<void> _importar(BuildContext context, Estado estado) async {

@@ -8,6 +8,7 @@ library;
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
+import '../motor/fechas.dart';
 import 'tema.dart';
 
 /// «1 serie», «3 series», «ninguna». El plural se hace bien porque estos resúmenes se leen
@@ -38,6 +39,30 @@ String kilos(num n) => n == n.roundToDouble() ? cifra(n) : cifra(n, 1);
 
 /// Los kilos de volumen se leen mejor en toneladas cuando pasan del millar.
 String volumenCorto(num kg) => kg >= 1000 ? '${cifra(kg / 1000, 1)} t' : '${cifra(kg)} kg';
+
+/// Cuándo se hizo la última copia de seguridad: «Nunca», «Hoy», «Hace 12 días».
+String textoDeUltimaCopia(DateTime? cuando) {
+  if (cuando == null) return 'Nunca';
+  final dias = diasEntre(claveDia(cuando), hoy());
+  if (dias <= 0) return 'Hoy';
+  if (dias == 1) return 'Ayer';
+  return 'Hace $dias días';
+}
+
+/// El texto del aviso de la copia.
+///
+/// Dice **cuánto trabajo se perdería**, no «acuérdate de hacer una copia». Un aviso que sólo
+/// manda hacer algo se aprende a cerrar sin leerlo; uno que pone el número delante se decide
+/// cada vez que sale.
+String avisoDeCopia(int sinCopia, DateTime? ultimaCopia) {
+  final trabajo = contar(sinCopia, 'entreno', 'entrenos');
+  if (ultimaCopia == null) {
+    return 'Todavía no has guardado ninguna copia: lo que llevas apuntado ($trabajo) sólo '
+        'existe en este móvil y se iría con él.';
+  }
+  return 'Desde la última copia (${textoDeUltimaCopia(ultimaCopia).toLowerCase()}) hay '
+      '$trabajo sin guardar fuera del móvil.';
+}
 
 /// Un panel: la caja con borde en la que va casi todo.
 ///

@@ -501,3 +501,41 @@ UltimaVez? ultimaVezDe(List<Entreno> entrenos, String ejercicioId, {String? excl
   }
   return null;
 }
+
+// ─────────────────────────── Copias de seguridad ───────────────────────────
+
+/// Cuántos entrenos terminados se han tocado desde la última copia; todos si no hay ninguna.
+///
+/// Se mira `actualizadoEn` y no la fecha del entreno porque lo que importa es qué trabajo se
+/// perdería: corregir hoy un peso de un entreno de la semana pasada también es trabajo que
+/// la copia de antes de ayer no tiene.
+int entrenosSinCopia(List<Entreno> entrenosHechos, DateTime? ultimaCopia) => ultimaCopia == null
+    ? entrenosHechos.length
+    : entrenosHechos.where((e) => e.actualizadoEn.isAfter(ultimaCopia)).length;
+
+/// A partir de cuántos entrenos sin copia conviene decir algo. Cuatro es una semana normal
+/// de gimnasio: lo justo para que perder el móvil escueza, y poco como para dar la lata.
+const entrenosParaRecordarCopia = 4;
+
+/// Y a los cuántos días, para quien entrena poco: dos entrenos al mes también son un año de
+/// historial si nunca se copia.
+const diasParaRecordarCopia = 21;
+
+/// Si toca recordar que haga una copia.
+///
+/// Con dos condiciones y no una porque hay dos formas de acumular algo que perder: entrenar
+/// mucho en poco tiempo, o poco durante mucho. Y nunca se avisa si no hay nada nuevo que
+/// copiar: un aviso que sale cuando no hay nada que hacer se aprende a ignorar, y entonces
+/// tampoco sirve el día que sí importa.
+bool tocaRecordarCopia({
+  required int sinCopia,
+  required DateTime? ultimaCopia,
+  required DateTime ahora,
+}) {
+  if (sinCopia == 0) return false;
+  if (sinCopia >= entrenosParaRecordarCopia) return true;
+  // Sin copia nunca, y con menos de esos entrenos, todavía no: los primeros días se está
+  // probando la aplicación, no guardando un historial.
+  if (ultimaCopia == null) return false;
+  return ahora.difference(ultimaCopia).inDays >= diasParaRecordarCopia;
+}

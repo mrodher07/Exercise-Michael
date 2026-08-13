@@ -12,3 +12,8 @@ GeneratedPluginRegistrant.java
 key.properties
 **/*.keystore
 **/*.jks
+
+# Menos ésta, que sí entra en el repositorio y a propósito: es la que hace que un APK nuevo
+# se instale encima del anterior sin borrar los datos. El razonamiento completo, y qué habría
+# que cambiar si esto llegara a publicarse, está en app/build.gradle.kts.
+!app/fitlog.jks

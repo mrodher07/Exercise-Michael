@@ -30,7 +30,35 @@ No hace falta instalar nada en el ordenador: la compila GitHub.
    abras.
 
 Para actualizarla, instala el APK nuevo encima: los datos no se van, porque viven en la
-carpeta de la aplicación y no en el APK.
+carpeta de la aplicación y no en el APK. Eso funciona porque **todos los APK se firman con la
+misma clave**, que está en el repositorio a propósito (`movil/android/app/fitlog.jks`); Android
+identifica una aplicación por su firma, y con una clave distinta en cada compilación el APK
+nuevo no se instalaría encima y habría que desinstalar —perdiendo los entrenos— para meterlo.
+El razonamiento completo, y qué habría que cambiar antes de publicar esto en Play Store, está
+en `movil/android/app/build.gradle.kts`.
+
+### Tus datos: dónde están y cómo llevártelos a otro móvil
+
+Viven **sólo en ese móvil**, en la carpeta privada de la aplicación: un JSON por colección. No
+hay cuenta ni servidor, así que nadie más los ve — y por lo mismo, nadie más los guarda.
+
+| | Tus datos |
+|---|---|
+| Cerrar la app, reiniciar, instalar un APK nuevo encima | Siguen ahí |
+| Desinstalar, «Borrar datos», reset de fábrica, perder el móvil | Se van |
+
+Para llevártelos: **Ajustes → Copias de seguridad → Compartir copia** saca un JSON y lo manda
+a donde quieras (Drive, correo, WhatsApp a ti mismo). En el otro móvil, **Restaurar desde un
+archivo**. Restaurar no borra nada: se fusiona registro a registro y, si algo choca, gana lo
+más recientemente tocado, así que importar dos veces la misma copia no duplica entrenos.
+
+Como acordarse es la parte que falla, la aplicación lleva la cuenta de cuándo fue la última
+copia y avisa en el resumen cuando hay cuatro entrenos sin copiar (o uno y tres semanas). El
+aviso desaparece al compartir una copia; nunca sale si no hay nada nuevo que perder.
+
+La copia automática de Android a Google Drive existe y está activada por defecto, pero **no
+cuentes con ella**: sólo restaura al estrenar un móvil, con la misma cuenta, y con una
+aplicación instalada a mano casi nunca llega a dispararse.
 
 ### Desarrollo
 

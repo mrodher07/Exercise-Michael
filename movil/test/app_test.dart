@@ -199,4 +199,60 @@ void main() {
     });
     expect(guardados!.tema, 'claro');
   });
+
+  testWidgets('el aviso de la copia sale en el resumen cuando hay algo que perder',
+      (probador) async {
+    // Cuatro entrenos cerrados y ninguna copia: es el caso en el que perder el móvil duele.
+    final hechos = [
+      for (var i = 0; i < 4; i++)
+        Entreno(
+          id: 'e$i',
+          fecha: sumarDias(hoy(), -i),
+          nombre: 'Torso',
+          comienzo: DateTime.now().subtract(Duration(days: i, hours: 1)),
+          fin: DateTime.now().subtract(Duration(days: i)),
+          ejercicios: [
+            EjercicioDelEntreno(
+              id: 'l$i',
+              ejercicioId: 'press-de-banca-con-barra',
+              series: [SerieRegistrada(peso: 100, reps: 5, hecha: true)],
+            ),
+          ],
+        ),
+    ];
+    await probador.runAsync(() => Almacen(carpeta: carpeta).guardarEntrenos(hechos));
+
+    final otro = Estado(almacen: Almacen(carpeta: carpeta));
+    await probador.runAsync(() => otro.cargar());
+    await probador.pumpWidget(App(estado: otro));
+    await probador.pumpAndSettle();
+
+    expect(otro.entrenosSinCopiar, 4);
+    expect(otro.tocaCopia, isTrue);
+    expect(find.textContaining('sólo existe en este móvil'), findsOne);
+    expect(find.text('Guardar una copia'), findsOne);
+
+    // Y el botón lleva a Ajustes, donde se hace.
+    await probador.tap(find.text('Guardar una copia'));
+    await probador.pumpAndSettle();
+    final panelDeCopias = find.text('Copias de seguridad');
+    await probador.scrollUntilVisible(
+      panelDeCopias,
+      200,
+      scrollable: find.byType(Scrollable).first,
+    );
+    expect(panelDeCopias, findsOne);
+    // «Nunca» es el resumen del panel, en la misma línea del título.
+    expect(find.text('Nunca'), findsOne);
+
+    // Apuntada la copia, el aviso se va.
+    otro.apuntarCopia();
+    await probador.pumpAndSettle();
+    expect(otro.tocaCopia, isFalse);
+    await probador.tap(find.widgetWithText(NavigationDestination, 'Resumen'));
+    await probador.pumpAndSettle();
+    expect(find.text('Guardar una copia'), findsNothing);
+
+    otro.dispose();
+  });
 }

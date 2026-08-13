@@ -129,6 +129,7 @@ class _MarcoState extends State<_Marco> {
       body: switch (_seccion) {
         Seccion.resumen => VistaResumen(
             onIrAEntrenar: () => setState(() => _seccion = Seccion.entrenar),
+            onIrAAjustes: () => setState(() => _seccion = Seccion.ajustes),
           ),
         Seccion.entrenar => VistaEntreno(onDescansar: _empezarDescanso),
         Seccion.ejercicios => const VistaEjercicios(),

@@ -28,12 +28,37 @@ android {
         versionName = flutter.versionName
     }
 
+    // La clave con la que se firma el APK, y va **dentro del repositorio** a propósito.
+    //
+    // Android identifica una aplicación por su firma: un APK firmado con otra clave no es
+    // «una versión nueva de FitLog», es otra aplicación, y al instalarlo encima dice
+    // «aplicación no instalada». La única salida sería desinstalar primero, lo que borra
+    // todos los entrenos. Antes esto se firmaba con la clave de depuración, que GitHub genera
+    // **nueva en cada máquina**: cada APK compilado allí era, para Android, una aplicación
+    // distinta de la anterior. Es decir, actualizar costaba el historial.
+    //
+    // Con la clave aquí, todos los APK que salgan de este repositorio —ahora y en tres años—
+    // se instalan encima del anterior y los datos siguen en su sitio.
+    //
+    // Y lo que hay que saber del otro lado: esta clave no es un secreto y no protege nada
+    // frente a quien tenga acceso al repositorio. Quien la tenga puede firmar un APK que el
+    // móvil aceptaría como actualización de FitLog — pero para que eso importe tendría que
+    // conseguir además que se instalara en el teléfono, y estos APK se instalan a mano.
+    // Si algún día esto va a Play Store, la clave tiene que salir de aquí y pasar a los
+    // secretos de GitHub: ahí sí protege algo, porque es lo que demuestra que una
+    // actualización viene del mismo autor.
+    signingConfigs {
+        create("fitlog") {
+            storeFile = file("fitlog.jks")
+            storePassword = "fitlog"
+            keyAlias = "fitlog"
+            keyPassword = "fitlog"
+        }
+    }
+
     buildTypes {
         release {
-            // Se firma con la clave de depuración a propósito: esto no va a Google Play, se
-            // instala a mano en el móvil de casa. Para publicarlo habría que crear un
-            // almacén de claves propio y referenciarlo aquí.
-            signingConfig = signingConfigs.getByName("debug")
+            signingConfig = signingConfigs.getByName("fitlog")
         }
     }
 }

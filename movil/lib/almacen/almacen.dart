@@ -215,6 +215,7 @@ class Ajustes {
     this.descansoPorDefecto = 90,
     this.avisoDescanso = true,
     this.avisoConPantallaApagada = true,
+    this.ultimaCopia,
   });
 
   String? nombre;
@@ -228,12 +229,20 @@ class Ajustes {
   /// hacer la versión web, y la razón de que esto sea una app de Android.
   bool avisoConPantallaApagada;
 
+  /// Cuándo se compartió la última copia de seguridad, o `null` si nunca.
+  ///
+  /// Se guarda para poder recordarlo: los datos viven sólo en este móvil, así que la única
+  /// forma de no perderlos es que exista una copia fuera, y confiar en que uno se acuerde de
+  /// hacerla es exactamente lo que falla.
+  DateTime? ultimaCopia;
+
   Map<String, dynamic> aJson() => {
         'nombre': nombre,
         'tema': tema,
         'descansoPorDefecto': descansoPorDefecto,
         'avisoDescanso': avisoDescanso,
         'avisoConPantallaApagada': avisoConPantallaApagada,
+        'ultimaCopia': ultimaCopia?.toIso8601String(),
       };
 
   static Ajustes deJson(Map<String, dynamic> j) => Ajustes(
@@ -242,6 +251,7 @@ class Ajustes {
         descansoPorDefecto: (j['descansoPorDefecto'] as num?)?.toInt() ?? 90,
         avisoDescanso: (j['avisoDescanso'] as bool?) ?? true,
         avisoConPantallaApagada: (j['avisoConPantallaApagada'] as bool?) ?? true,
+        ultimaCopia: DateTime.tryParse((j['ultimaCopia'] as String?) ?? ''),
       );
 }
 

@@ -342,10 +342,33 @@ class Estado extends ChangeNotifier with WidgetsBindingObserver {
     return _almacen.exportar();
   }
 
+  /// Cuántos entrenos se perderían ahora mismo si desapareciera el móvil.
+  int get entrenosSinCopiar => entrenosSinCopia(entrenosHechos, _ajustes.ultimaCopia);
+
+  bool get tocaCopia => tocaRecordarCopia(
+        sinCopia: entrenosSinCopiar,
+        ultimaCopia: _ajustes.ultimaCopia,
+        ahora: DateTime.now(),
+      );
+
+  /// Apunta que la copia ha salido de aquí. Se escribe **ya**, sin el retardo de los 400 ms:
+  /// es un dato de una sola vez y no una tecla más de un peso.
+  void apuntarCopia() {
+    _ajustes.ultimaCopia = DateTime.now();
+    _pendientes.remove('ajustes')?.cancel();
+    _anotarEscritura(_almacen.guardarAjustes(_ajustes));
+    notifyListeners();
+  }
+
   Future<Map<String, int>> importar(String json) async {
     await vaciarPendientes();
     final cuenta = await _almacen.importar(json);
     await cargar();
+    // Restaurar también cuenta como tener una copia: el archivo que se acaba de leer existe
+    // fuera de este móvil. Sin esto, un móvil nuevo con el historial recién importado
+    // saludaría con un aviso de «tienes 200 entrenos sin copia», que es falso y enseña a no
+    // hacer caso de los avisos.
+    apuntarCopia();
     return cuenta;
   }
 

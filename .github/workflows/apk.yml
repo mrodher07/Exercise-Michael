@@ -11,11 +11,14 @@
 #   2. Abajo, en «Artifacts», descarga «fitlog-apk». Es un zip con el APK dentro.
 #   3. Descomprímelo en el móvil y ábrelo. Android pedirá permiso para instalar aplicaciones
 #      de fuera de Play Store: se lo das a la aplicación con la que lo estés abriendo (el
-#      explorador de archivos o el navegador). Es tu propia aplicación firmada con la clave
-#      de depuración, no una descarga de un desconocido.
+#      explorador de archivos o el navegador). Es tu propia aplicación, no una descarga de un
+#      desconocido.
 #
 # Para las siguientes veces basta con instalar el APK nuevo encima: los datos se conservan
-# porque van en la carpeta de la aplicación, no en el APK.
+# porque van en la carpeta de la aplicación, no en el APK, y porque todos los APK que salen de
+# aquí se firman con la misma clave (`movil/android/app/fitlog.jks`). Con una clave distinta en
+# cada compilación —que es lo que pasa con la de depuración, que se genera nueva en cada
+# máquina— Android trataría el APK nuevo como otra aplicación y no lo dejaría instalar encima.
 
 name: APK de Android
 

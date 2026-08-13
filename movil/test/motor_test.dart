@@ -352,4 +352,57 @@ void main() {
       expect(Entreno.deJson(enCurso.aJson()).enCurso, isTrue);
     });
   });
+
+  group('el recordatorio de la copia de seguridad', () {
+    Entreno hecho(String fecha, DateTime actualizado) => Entreno(
+          id: 'e-$fecha',
+          fecha: fecha,
+          nombre: 'Entreno',
+          comienzo: DateTime.parse('${fecha}T10:00:00'),
+          fin: DateTime.parse('${fecha}T11:00:00'),
+          actualizadoEn: actualizado,
+          ejercicios: [],
+        );
+
+    final ahora = DateTime(2026, 8, 13, 20);
+    final hace2Dias = ahora.subtract(const Duration(days: 2));
+    final hace30Dias = ahora.subtract(const Duration(days: 30));
+
+    test('sin ninguna copia, cuenta todos los entrenos', () {
+      final hechos = [hecho('2026-08-10', hace2Dias), hecho('2026-08-12', ahora)];
+      expect(entrenosSinCopia(hechos, null), 2);
+    });
+
+    test('con copia, sólo los tocados después', () {
+      final hechos = [hecho('2026-08-01', hace30Dias), hecho('2026-08-12', ahora)];
+      expect(entrenosSinCopia(hechos, hace2Dias), 1);
+    });
+
+    test('un entreno viejo corregido hoy cuenta como sin copiar', () {
+      // Lo que importa no es cuándo se entrenó, sino qué trabajo se perdería: si ayer se
+      // corrigió un peso de hace un mes, la copia de la semana pasada no lo tiene.
+      final hechos = [hecho('2026-07-01', ahora)];
+      expect(entrenosSinCopia(hechos, hace2Dias), 1);
+    });
+
+    test('no avisa si no hay nada nuevo que copiar', () {
+      expect(tocaRecordarCopia(sinCopia: 0, ultimaCopia: hace30Dias, ahora: ahora), isFalse);
+    });
+
+    test('no avisa por los primeros entrenos si nunca se ha copiado', () {
+      // Los primeros días se está probando la aplicación.
+      expect(tocaRecordarCopia(sinCopia: 3, ultimaCopia: null, ahora: ahora), isFalse);
+    });
+
+    test('avisa a partir de una semana de entrenos', () {
+      expect(tocaRecordarCopia(sinCopia: 4, ultimaCopia: null, ahora: ahora), isTrue);
+      expect(tocaRecordarCopia(sinCopia: 4, ultimaCopia: hace2Dias, ahora: ahora), isTrue);
+    });
+
+    test('avisa por tiempo a quien entrena poco', () {
+      // Dos entrenos al mes también son un historial: a los 21 días, con uno basta.
+      expect(tocaRecordarCopia(sinCopia: 1, ultimaCopia: hace2Dias, ahora: ahora), isFalse);
+      expect(tocaRecordarCopia(sinCopia: 1, ultimaCopia: hace30Dias, ahora: ahora), isTrue);
+    });
+  });
 }
