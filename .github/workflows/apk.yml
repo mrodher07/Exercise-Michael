@@ -5,16 +5,20 @@
 # accesible según dónde se trabaje). Aquí lo hace GitHub, que ya trae el SDK instalado en sus
 # máquinas.
 #
-# El APK sale por tres caminos, y el bueno para el móvil es el primero:
+# El APK sale por dos caminos, y el bueno para el móvil es el primero:
 #
-#   · Como Release de un **repositorio público aparte** (`mrodher07/fitlog-apk`), que sólo
-#     contiene el APK. Ése es el que se puede descargar desde el móvil **sin iniciar sesión**,
-#     y es el único que funciona bien: en un repositorio privado la descarga va autenticada,
-#     y el gestor de descargas de Android se atasca —la barra llega al 100 % y la descarga no
-#     termina nunca— porque el archivo viaja detrás de una redirección con sesión.
-#   · Como Release de la etiqueta «apk» de este repositorio, que sigue ahí como respaldo.
+#   · Como Release de la etiqueta «apk», con un enlace fijo que siempre trae el último:
+#     .../releases/latest/download/fitlog.apk
+#     Se toca en el móvil y se instala, sin descomprimir nada y sin caducar.
 #   · Como artefacto del propio flujo, que es un zip y caduca a los 90 días. Se queda por si
 #     hace falta el APK de una compilación concreta.
+#
+# Que ese enlace funcione desde el móvil depende de una cosa: **este repositorio es público**.
+# Mientras fue privado, la descarga iba autenticada y el gestor de descargas de Android se
+# atascaba —la barra llegaba al 100 % y la descarga no terminaba nunca— porque el archivo
+# viaja detrás de una redirección a otro dominio y ese gestor no siempre lleva la sesión. Si
+# algún día el repositorio vuelve a ser privado, el APK habrá que publicarlo en algún sitio
+# público o pasarlo al móvil a mano.
 #
 # Para las siguientes veces basta con instalar el APK nuevo encima: los datos se conservan
 # porque van en la carpeta de la aplicación, no en el APK, y porque todos los APK que salen de
@@ -94,6 +98,8 @@ jobs:
       # Se publica después de analizar, pasar las pruebas y compilar, así que lo que hay ahí
       # colgado nunca es una versión que no arranque. Ojo con esto: cualquier rama que toque
       # `movil/` y llegue verde hasta aquí reescribe el APK del Release.
+      #
+      # El `github.token` del propio flujo basta porque el Release es de este repositorio.
       - name: Publicar el APK en el Release «apk»
         env:
           GH_TOKEN: ${{ github.token }}
@@ -133,77 +139,12 @@ jobs:
               --target "$GITHUB_SHA"
           fi
 
-      # El camino que de verdad funciona en el móvil: el mismo APK, en el Release de un
-      # repositorio público que sólo contiene esto.
-      #
-      # Hace falta porque una descarga de un repositorio privado va autenticada, y el gestor
-      # de descargas de Android no siempre lleva la sesión por la redirección a
-      # `objects.githubusercontent.com`: la barra llega al 100 % y la descarga se queda «en
-      # curso» para siempre, sin poder abrir el archivo. Desde un repositorio público es una
-      # descarga normal y corriente, sin sesión de por medio. El código sigue privado; ahí
-      # sólo va el APK.
-      #
-      # El secreto `TOKEN_APK` es necesario porque el `github.token` del flujo sólo vale para
-      # este repositorio. Mientras no esté puesto, este paso se salta y no rompe nada: el APK
-      # sigue saliendo por los otros dos caminos.
-      - name: Publicar el APK donde se descargue sin sesión
-        env:
-          GH_TOKEN: ${{ secrets.TOKEN_APK }}
-          REPO_APK: mrodher07/fitlog-apk
-        run: |
-          set -euo pipefail
-          # El «me lo salto» va aquí dentro y no en un `if:` del paso para que quede escrito
-          # en el registro de la ejecución: un paso saltado sin explicación es media hora
-          # buscando por qué no se ha publicado nada.
-          if [ -z "${GH_TOKEN:-}" ]; then
-            echo 'Sin el secreto TOKEN_APK: me salto la publicación en el repositorio'
-            echo 'público. El APK está en el Release de este repositorio y en los artefactos.'
-            exit 0
-          fi
-          if ! gh repo view "$REPO_APK" >/dev/null 2>&1; then
-            # Un 404 de GitHub no distingue «ese repositorio no existe» de «existe y este
-            # token no lo ve», y el arreglo no es el mismo. Se pregunta dos veces: una sin
-            # credenciales —que contesta por la existencia y por si es público— y otra con el
-            # token, para saber a quién pertenece.
-            publico=$(curl -s -o /dev/null -w '%{http_code}' "https://api.github.com/repos/$REPO_APK")
-            duenno=$(gh api user --jq .login 2>/dev/null || echo '(el token no identifica a nadie)')
-            echo "El token de TOKEN_APK no ve el repositorio $REPO_APK." >&2
-            echo >&2
-            echo "Sin autenticar, la API contesta $publico para ese repositorio:" >&2
-            echo "  · 200 → existe y es público, así que el problema es el token: en su" >&2
-            echo "          «Repository access» tiene que estar ese repositorio, y en" >&2
-            echo "          «Contents» permiso de lectura y escritura." >&2
-            echo "  · 404 → no existe con ese nombre exacto, o es privado. Créalo público" >&2
-            echo "          como $REPO_APK, o cambia REPO_APK en este flujo." >&2
-            echo >&2
-            echo "El token dice pertenecer a: $duenno" >&2
-            exit 1
-          fi
-          # Una etiqueta necesita algo a lo que apuntar, y un repositorio recién creado sin
-          # README no tiene ni un commit. Se avisa aquí porque el error de `gh` en ese caso
-          # («Not Found») no dice nada de esto.
-          if ! gh api "repos/$REPO_APK/commits?per_page=1" >/dev/null 2>&1; then
-            echo "El repositorio $REPO_APK está vacío y una etiqueta necesita al menos un" >&2
-            echo "commit. Añádele un README y vuelve a lanzar esta acción." >&2
-            exit 1
-          fi
-          notas="APK de FitLog compilado desde \`${GITHUB_SHA:0:7}\` el $(date -u '+%d/%m/%Y a las %H:%M UTC'). El código está en un repositorio privado; aquí sólo se publica el APK para poder instalarlo en el móvil."
-          if gh release view apk --repo "$REPO_APK" >/dev/null 2>&1; then
-            gh release edit apk --repo "$REPO_APK" --notes "$notas"
-            gh release upload apk fitlog.apk --repo "$REPO_APK" --clobber
-          else
-            gh release create apk fitlog.apk \
-              --repo "$REPO_APK" \
-              --title 'FitLog · último APK' \
-              --notes "$notas"
-          fi
-
       # Y el mismo APK como artefacto del flujo, por si algún día hace falta el de una
       # compilación concreta y no el último.
       - name: Dejar el APK descargable también aquí
-        # Aunque haya fallado la publicación en el repositorio público: si el camino bueno se
-        # rompe, el respaldo es cuando más falta hace, y sin esto el paso se saltaba justo
-        # entonces. En una ejecución cancelada sí se salta, que ahí no hay nada que guardar.
+        # Aunque haya fallado la publicación del Release: si el camino bueno se rompe, el
+        # respaldo es cuando más falta hace, y sin esto el paso se saltaba justo entonces. En
+        # una ejecución cancelada sí se salta, que ahí no hay nada que guardar.
         if: success() || failure()
         uses: actions/upload-artifact@v4
         with:

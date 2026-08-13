@@ -25,7 +25,7 @@ No hace falta instalar nada en el ordenador: la compila GitHub.
 
 **El enlace, que no cambia nunca:**
 
-<https://github.com/mrodher07/fitlog-apk/releases/latest/download/fitlog.apk>
+<https://github.com/mrodher07/Exercise-Michael/releases/latest/download/fitlog.apk>
 
 1. Ábrelo en el móvil y descarga el archivo. **No hace falta iniciar sesión.**
 2. Ábrelo. Android pedirá permiso para instalar aplicaciones de fuera de Play Store; se lo das
@@ -33,40 +33,32 @@ No hace falta instalar nada en el ordenador: la compila GitHub.
    «Instalar de todas formas».
 
 Ese enlace apunta siempre al último APK compilado, así que vale para instalar y para
-actualizar, y se puede guardar en favoritos.
+actualizar, y se puede guardar en favoritos. Sale del Release de la etiqueta `apk`, que el
+flujo reescribe en cada compilación verde.
 
-El APK vive en un repositorio **público aparte** que sólo contiene eso, y no aquí, por un
-motivo práctico: descargar de un repositorio privado va autenticado, y el gestor de descargas
-de Android se atasca con la redirección con sesión —la barra llega al 100 % y la descarga no
-termina nunca—. Desde un repositorio público es una descarga normal. El código sigue privado.
+Que se pueda descargar así depende de que **este repositorio sea público**. Mientras fue
+privado la descarga iba autenticada, y el gestor de descargas de Android se atascaba: la barra
+llegaba al 100 % y la descarga no terminaba nunca, porque el archivo viaja detrás de una
+redirección a otro dominio y ese gestor no siempre lleva la sesión. Si algún día vuelve a ser
+privado, el APK habrá que publicarlo en otro sitio público o pasarlo al móvil a mano.
 
-Como respaldo, el APK también queda en el Release de la etiqueta `apk` de **este** repositorio
-(que sí pide sesión), y como artefacto de su ejecución: pestaña **Actions** → **APK de
-Android** → la ejecución → **Artifacts** → `fitlog-apk` (un zip, y caduca a los 90 días).
-
-#### Lo que hace falta para que se publique ahí (una sola vez)
-
-El `GITHUB_TOKEN` del flujo sólo vale para su propio repositorio, así que para escribir en el
-público hay que darle una llave:
-
-1. Crea el repositorio **público** `fitlog-apk`, marcando «Add a README file» (una etiqueta
-   necesita al menos un commit).
-2. En <https://github.com/settings/personal-access-tokens/new>, un token *fine-grained*:
-   sólo el repositorio `fitlog-apk`, y en **Repository permissions → Contents** ponle
-   **Read and write**. Nada más.
-3. Pega el token en este repositorio, en **Settings → Secrets and variables → Actions → New
-   repository secret**, con el nombre `TOKEN_APK`.
-
-Mientras ese secreto no exista, el flujo se salta ese paso y lo dice en el registro; el APK
-sigue saliendo por los otros dos caminos.
+Si alguna vez hace falta el APK de una compilación concreta y no el último, está como
+artefacto de su ejecución: pestaña **Actions** → **APK de Android** → la ejecución →
+**Artifacts** → `fitlog-apk` (un zip, y caduca a los 90 días).
 
 Para actualizarla, instala el APK nuevo encima: los datos no se van, porque viven en la
 carpeta de la aplicación y no en el APK. Eso funciona porque **todos los APK se firman con la
 misma clave**, que está en el repositorio a propósito (`movil/android/app/fitlog.jks`); Android
 identifica una aplicación por su firma, y con una clave distinta en cada compilación el APK
 nuevo no se instalaría encima y habría que desinstalar —perdiendo los entrenos— para meterlo.
-El razonamiento completo, y qué habría que cambiar antes de publicar esto en Play Store, está
-en `movil/android/app/build.gradle.kts`.
+El razonamiento completo está en `movil/android/app/build.gradle.kts`, incluida la otra cara:
+como este repositorio es público, **esa clave y su contraseña son públicas**, así que cualquiera
+podría firmar un APK que un móvil aceptaría como actualización de FitLog. Tendría que conseguir
+además que se instalara en el teléfono, y estos APK se instalan a mano desde un enlace conocido,
+así que el riesgo real es pequeño para una aplicación personal que no está en ninguna tienda —
+pero existe, y se asume a conciencia. Quitarlo de encima cuesta una desinstalación (clave nueva
+en los secretos de GitHub, y el primer APK firmado con ella ya no se instala encima del
+anterior).
 
 ### Tus datos: dónde están y cómo llevártelos a otro móvil
 
