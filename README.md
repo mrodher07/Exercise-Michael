@@ -25,18 +25,28 @@ No hace falta instalar nada en el ordenador: la compila GitHub.
 
 **El enlace, que no cambia nunca:**
 
-<https://github.com/mrodher07/Exercise-Michael/releases/latest/download/fitlog.apk>
+<https://github.com/mrodher07/Exercise-Michael/releases/latest/download/fitlog-arm64.apk>
 
-1. Ábrelo en el móvil y descarga el archivo. **No hace falta iniciar sesión.**
-2. Ábrelo. Android pedirá permiso para instalar aplicaciones de fuera de Play Store; se lo das
-   al navegador o al explorador de archivos con el que lo abras. Si sale Play Protect,
+1. Ábrelo en el móvil y descarga el archivo. **No hace falta iniciar sesión.** Mejor desde
+   Chrome o Firefox que desde un navegador embebido en otra aplicación: los suyos se quedan
+   colgados al terminar la descarga, con el archivo ya completo.
+2. Abre el archivo. Android pedirá permiso para instalar aplicaciones de fuera de Play Store; se
+   lo das al navegador o al explorador de archivos con el que lo abras. Si sale Play Protect,
    «Instalar de todas formas».
 
 Ese enlace apunta siempre al último APK compilado, así que vale para instalar y para
 actualizar, y se puede guardar en favoritos. Sale del Release de la etiqueta `apk`, que el
 flujo reescribe en cada compilación verde.
 
-Que se pueda descargar así depende de que **este repositorio sea público**. Mientras fue
+Hay tres APK publicados y el de arriba es el que quieres:
+
+| archivo | tamaño | para qué |
+|---|---|---|
+| `fitlog-arm64.apk` | ~20 MB | **cualquier móvil de los últimos años** |
+| `fitlog-arm32.apk` | ~18 MB | un teléfono muy viejo, de 32 bits |
+| `fitlog.apk` | 51 MB | las tres arquitecturas dentro; el comodín si los otros no instalan |
+
+Que se puedan descargar así depende de que **este repositorio sea público**. Mientras fue
 privado la descarga iba autenticada, y el gestor de descargas de Android se atascaba: la barra
 llegaba al 100 % y la descarga no terminaba nunca, porque el archivo viaja detrás de una
 redirección a otro dominio y ese gestor no siempre lleva la sesión. Si algún día vuelve a ser

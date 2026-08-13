@@ -7,9 +7,11 @@
 #
 # El APK sale por dos caminos, y el bueno para el móvil es el primero:
 #
-#   · Como Release de la etiqueta «apk», con un enlace fijo que siempre trae el último:
-#     .../releases/latest/download/fitlog.apk
-#     Se toca en el móvil y se instala, sin descomprimir nada y sin caducar.
+#   · Como Release de la etiqueta «apk», con enlaces fijos que siempre traen el último:
+#     .../releases/latest/download/fitlog-arm64.apk   ← el bueno, unos 20 MB
+#     .../releases/latest/download/fitlog-arm32.apk   ← teléfonos muy viejos
+#     .../releases/latest/download/fitlog.apk         ← las tres arquitecturas, 51 MB
+#     Se tocan en el móvil y se instalan, sin descomprimir nada y sin caducar.
 #   · Como artefacto del propio flujo, que es un zip y caduca a los 90 días. Se queda por si
 #     hace falta el APK de una compilación concreta.
 #
@@ -87,12 +89,26 @@ jobs:
         working-directory: movil
         run: flutter build apk --release
 
+      # Y además uno por arquitectura.
+      #
+      # El APK de arriba es «universal»: lleva dentro el código nativo de las tres
+      # arquitecturas de Android y por eso pesa 51 MB, de los cuales el móvil usa un tercio.
+      # El de arm64 ronda los 20 MB y vale para cualquier teléfono de los últimos años.
+      #
+      # No es una cuestión de elegancia: una descarga de 51 MB tarda el triple y da el triple
+      # de ocasiones a que el gestor de descargas de Android se quede colgado al final —que es
+      # exactamente lo que estaba pasando—. El universal se sigue publicando por si algún día
+      # hace falta un móvil viejo o raro.
+      - name: Compilar un APK por arquitectura
+        working-directory: movil
+        run: flutter build apk --release --split-per-abi
+
       # El camino bueno para instalarlo en el móvil: un Release con el APK suelto dentro.
       #
       # Es **un solo Release** que se va reescribiendo, con la etiqueta fija «apk», y no uno
-      # por compilación. Así el enlace `/releases/latest/download/fitlog.apk` siempre trae el
-      # último APK y se puede guardar en favoritos del móvil, en vez de tener que buscar cada
-      # vez cuál es la última ejecución. El historial de versiones ya está en los commits; una
+      # por compilación. Así el enlace `/releases/latest/download/fitlog-arm64.apk` siempre
+      # trae el último APK y se puede guardar en favoritos del móvil, en vez de tener que
+      # buscar cada vez cuál es la última ejecución. El historial de versiones ya está en los commits; una
       # lista de APK viejos no le sirve a nadie.
       #
       # Se publica después de analizar, pasar las pruebas y compilar, así que lo que hay ahí
@@ -105,19 +121,29 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
           set -euo pipefail
-          # Se renombra a fitlog.apk: el nombre del archivo es la mitad del enlace fijo, así
-          # que tiene que ser siempre el mismo.
-          cp movil/build/app/outputs/flutter-apk/app-release.apk fitlog.apk
+          # Se renombran: el nombre del archivo es la mitad del enlace fijo, así que tiene
+          # que ser siempre el mismo.
+          salida=movil/build/app/outputs/flutter-apk
+          cp "$salida/app-arm64-v8a-release.apk"   fitlog-arm64.apk
+          cp "$salida/app-armeabi-v7a-release.apk" fitlog-arm32.apk
+          cp "$salida/app-release.apk"             fitlog.apk
           notas=$(cat <<TEXTO
           APK de FitLog compilado desde \`${GITHUB_SHA:0:7}\` el $(date -u '+%d/%m/%Y a las %H:%M UTC').
 
-          **Descarga directa:** [fitlog.apk](https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/fitlog.apk) — este enlace siempre trae el último.
+          ### Cuál descargar
+
+          **[fitlog-arm64.apk](https://github.com/${GITHUB_REPOSITORY}/releases/latest/download/fitlog-arm64.apk) — éste.** Unos 20 MB, y vale para cualquier móvil de los últimos años.
+
+          Los otros dos son para casos raros: \`fitlog-arm32.apk\` para un teléfono muy viejo, y \`fitlog.apk\` con las tres arquitecturas dentro (51 MB) si ninguno de los otros instala.
+
+          Estos enlaces siempre traen el último APK compilado, así que valen igual para instalar y para actualizar.
 
           ### Instalar
-          1. Toca el enlace en el móvil y descarga el archivo.
-          2. Ábrelo. Android pedirá permiso para instalar aplicaciones de fuera de Play Store:
-             se lo das a la aplicación desde la que lo abras (el navegador o el explorador de
-             archivos).
+          1. Toca el enlace en el móvil y descarga el archivo. Mejor desde Chrome o Firefox que
+             desde un navegador metido dentro de otra aplicación: sus descargas se quedan
+             colgadas al terminar.
+          2. Abre el archivo. Android pedirá permiso para instalar aplicaciones de fuera de
+             Play Store: se lo das a la aplicación desde la que lo abras.
           3. Si sale Play Protect, «Instalar de todas formas». Es tu propia aplicación.
 
           Para actualizar, instala el APK nuevo encima: **los entrenos no se van**, porque
@@ -131,9 +157,9 @@ jobs:
             # etiqueta que ya existe no se mueve—, y por eso el commit de verdad va escrito
             # en las notas.
             gh release edit apk --notes "$notas"
-            gh release upload apk fitlog.apk --clobber
+            gh release upload apk fitlog-arm64.apk fitlog-arm32.apk fitlog.apk --clobber
           else
-            gh release create apk fitlog.apk \
+            gh release create apk fitlog-arm64.apk fitlog-arm32.apk fitlog.apk \
               --title 'FitLog · último APK' \
               --notes "$notas" \
               --target "$GITHUB_SHA"
