@@ -201,6 +201,10 @@ jobs:
       # Y el mismo APK como artefacto del flujo, por si algún día hace falta el de una
       # compilación concreta y no el último.
       - name: Dejar el APK descargable también aquí
+        # Aunque haya fallado la publicación en el repositorio público: si el camino bueno se
+        # rompe, el respaldo es cuando más falta hace, y sin esto el paso se saltaba justo
+        # entonces. En una ejecución cancelada sí se salta, que ahí no hay nada que guardar.
+        if: success() || failure()
         uses: actions/upload-artifact@v4
         with:
           name: fitlog-apk
