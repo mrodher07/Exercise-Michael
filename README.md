@@ -25,21 +25,40 @@ No hace falta instalar nada en el ordenador: la compila GitHub.
 
 **El enlace, que no cambia nunca:**
 
-<https://github.com/mrodher07/Exercise-Michael/releases/latest/download/fitlog.apk>
+<https://github.com/mrodher07/fitlog-apk/releases/latest/download/fitlog.apk>
 
-1. Ábrelo en el móvil (con la sesión de GitHub iniciada, que el repositorio es privado) y
-   descarga el archivo.
+1. Ábrelo en el móvil y descarga el archivo. **No hace falta iniciar sesión.**
 2. Ábrelo. Android pedirá permiso para instalar aplicaciones de fuera de Play Store; se lo das
    al navegador o al explorador de archivos con el que lo abras. Si sale Play Protect,
    «Instalar de todas formas».
 
 Ese enlace apunta siempre al último APK compilado, así que vale para instalar y para
-actualizar, y se puede guardar en favoritos. Sale del Release de la etiqueta `apk`, que el
-flujo reescribe en cada compilación verde.
+actualizar, y se puede guardar en favoritos.
 
-Si alguna vez hace falta el APK de una compilación concreta y no el último, está como
-artefacto de su ejecución: pestaña **Actions** → **APK de Android** → la ejecución →
-**Artifacts** → `fitlog-apk` (un zip, y caduca a los 90 días).
+El APK vive en un repositorio **público aparte** que sólo contiene eso, y no aquí, por un
+motivo práctico: descargar de un repositorio privado va autenticado, y el gestor de descargas
+de Android se atasca con la redirección con sesión —la barra llega al 100 % y la descarga no
+termina nunca—. Desde un repositorio público es una descarga normal. El código sigue privado.
+
+Como respaldo, el APK también queda en el Release de la etiqueta `apk` de **este** repositorio
+(que sí pide sesión), y como artefacto de su ejecución: pestaña **Actions** → **APK de
+Android** → la ejecución → **Artifacts** → `fitlog-apk` (un zip, y caduca a los 90 días).
+
+#### Lo que hace falta para que se publique ahí (una sola vez)
+
+El `GITHUB_TOKEN` del flujo sólo vale para su propio repositorio, así que para escribir en el
+público hay que darle una llave:
+
+1. Crea el repositorio **público** `fitlog-apk`, marcando «Add a README file» (una etiqueta
+   necesita al menos un commit).
+2. En <https://github.com/settings/personal-access-tokens/new>, un token *fine-grained*:
+   sólo el repositorio `fitlog-apk`, y en **Repository permissions → Contents** ponle
+   **Read and write**. Nada más.
+3. Pega el token en este repositorio, en **Settings → Secrets and variables → Actions → New
+   repository secret**, con el nombre `TOKEN_APK`.
+
+Mientras ese secreto no exista, el flujo se salta ese paso y lo dice en el registro; el APK
+sigue saliendo por los otros dos caminos.
 
 Para actualizarla, instala el APK nuevo encima: los datos no se van, porque viven en la
 carpeta de la aplicación y no en el APK. Eso funciona porque **todos los APK se firman con la
