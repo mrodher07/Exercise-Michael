@@ -161,9 +161,22 @@ jobs:
             exit 0
           fi
           if ! gh repo view "$REPO_APK" >/dev/null 2>&1; then
-            echo "No se ve el repositorio $REPO_APK." >&2
-            echo "Créalo público, o revisa que TOKEN_APK tenga permiso de escritura de" >&2
-            echo "contenido sobre él." >&2
+            # Un 404 de GitHub no distingue «ese repositorio no existe» de «existe y este
+            # token no lo ve», y el arreglo no es el mismo. Se pregunta dos veces: una sin
+            # credenciales —que contesta por la existencia y por si es público— y otra con el
+            # token, para saber a quién pertenece.
+            publico=$(curl -s -o /dev/null -w '%{http_code}' "https://api.github.com/repos/$REPO_APK")
+            duenno=$(gh api user --jq .login 2>/dev/null || echo '(el token no identifica a nadie)')
+            echo "El token de TOKEN_APK no ve el repositorio $REPO_APK." >&2
+            echo >&2
+            echo "Sin autenticar, la API contesta $publico para ese repositorio:" >&2
+            echo "  · 200 → existe y es público, así que el problema es el token: en su" >&2
+            echo "          «Repository access» tiene que estar ese repositorio, y en" >&2
+            echo "          «Contents» permiso de lectura y escritura." >&2
+            echo "  · 404 → no existe con ese nombre exacto, o es privado. Créalo público" >&2
+            echo "          como $REPO_APK, o cambia REPO_APK en este flujo." >&2
+            echo >&2
+            echo "El token dice pertenecer a: $duenno" >&2
             exit 1
           fi
           # Una etiqueta necesita algo a lo que apuntar, y un repositorio recién creado sin
