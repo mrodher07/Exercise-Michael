@@ -28,5 +28,32 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
+  # Genera los iconos de la aplicación a partir de `assets/`. Sólo hace falta al cambiar el
+  # icono: `dart run flutter_launcher_icons`.
+  flutter_launcher_icons: ^0.14.4
+
 flutter:
   uses-material-design: true
+
+# El icono de la aplicación. Los PNG de `android/app/src/main/res/mipmap-*` **están generados
+# a partir de esto**: no se editan a mano.
+#
+# Se hacen dos cosas distintas porque Android tiene dos formas de icono:
+#
+#  · El icono adaptativo (Android 8 en adelante, que es cualquier móvil de hoy) son dos capas
+#    y el sistema las recorta con la forma que use cada lanzador: círculo, cuadrado
+#    redondeado, gota... Por eso el primer plano lleva sólo el dibujo, con aire alrededor: si
+#    llegara hasta el borde, el recorte se comería la mancuerna. El fondo es el mismo gris
+#    oscuro del icono original.
+#  · El icono de siempre, para los Android más antiguos, es la imagen entera con las esquinas
+#    ya redondeadas y transparentes.
+flutter_launcher_icons:
+  android: true
+  ios: false
+  image_path: assets/icono.png
+  adaptive_icon_background: '#1F2228'
+  adaptive_icon_foreground: assets/icono_primer_plano.png
+  # El icono monocromo de los temas de Android 13: el sistema lo repinta con los colores del
+  # fondo de pantalla, así que se le da el mismo dibujo y él se encarga.
+  adaptive_icon_monochrome: assets/icono_primer_plano.png
+  min_sdk_android: 23

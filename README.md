@@ -134,7 +134,27 @@ movil/lib/
   datos/      El catálogo de ejercicios (generado, no editar a mano).
   almacen/    Los archivos JSON y los tipos que se guardan.
   ui/         Pantallas, piezas comunes, gráficos con CustomPainter y temas.
+movil/assets/ El icono, del que salen los de Android (también generados).
 ```
+
+### Cambiar el icono
+
+Los PNG de `movil/android/app/src/main/res/mipmap-*` y `drawable-*` **están generados**: no se
+tocan a mano. Salen de dos imágenes y un comando:
+
+- `assets/icono.png` — el icono entero, con las esquinas ya redondeadas y transparentes. Es el
+  que usan los Android antiguos.
+- `assets/icono_primer_plano.png` — sólo el dibujo sobre transparente, con aire alrededor. Es
+  la capa de delante del icono adaptativo (Android 8 en adelante), que el sistema recorta con
+  la forma de cada lanzador: círculo, cuadrado redondeado, gota. Si el dibujo llegara al borde,
+  ese recorte se comería un trozo.
+
+```sh
+cd movil && dart run flutter_launcher_icons
+```
+
+El color del fondo del icono adaptativo está en `pubspec.yaml`, junto al resto de la
+configuración, y tiene que ser el mismo gris oscuro del dibujo.
 
 ## La app web
 
