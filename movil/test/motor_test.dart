@@ -575,4 +575,135 @@ void main() {
       expect(a.dias.single.id, isNot(b.dias.single.id));
     });
   });
+
+  group('cardio', () {
+    Entreno cardioDe(String ejercicioId, List<SerieRegistrada> series, {String? lugar}) => Entreno(
+          id: 'c-$ejercicioId',
+          fecha: '2026-08-19',
+          nombre: 'Cardio',
+          comienzo: DateTime.parse('2026-08-19T10:00:00'),
+          fin: DateTime.parse('2026-08-19T10:40:00'),
+          lugar: lugar,
+          ejercicios: [
+            EjercicioDelEntreno(id: 'l1', ejercicioId: ejercicioId, series: series),
+          ],
+        );
+
+    SerieRegistrada tramo({double? km, int? seg, int? kcal, bool hecha = true}) =>
+        SerieRegistrada(distancia: km, segundos: seg, calorias: kcal, hecha: hecha);
+
+    test('suma minutos, kilómetros y calorías', () {
+      final resumen = resumenDeCardio([
+        cardioDe('cinta-de-correr', [tramo(km: 5, seg: 1800, kcal: 320)]),
+        cardioDe('bicicleta-estatica', [tramo(km: 12, seg: 1800, kcal: 250)]),
+      ], ejerciciosDeCasa);
+
+      expect(resumen.sesiones, 2);
+      expect(resumen.minutos, 60);
+      expect(resumen.kilometros, 17);
+      expect(resumen.calorias, 570);
+      expect(resumen.hayAlgo, isTrue);
+    });
+
+    test('la fuerza no cuenta como cardio', () {
+      final pesas = Entreno(
+        id: 'e1',
+        fecha: '2026-08-19',
+        nombre: 'Torso',
+        comienzo: DateTime.parse('2026-08-19T10:00:00'),
+        fin: DateTime.parse('2026-08-19T11:00:00'),
+        ejercicios: [
+          EjercicioDelEntreno(
+            id: 'l1',
+            ejercicioId: 'press-de-banca-con-barra',
+            series: [serie(80, 8)],
+          ),
+        ],
+      );
+      expect(resumenDeCardio([pesas], ejerciciosDeCasa).hayAlgo, isFalse);
+    });
+
+    test('lo que no se marca no suma', () {
+      final resumen = resumenDeCardio(
+        [cardioDe('cinta-de-correr', [tramo(km: 5, seg: 1800, kcal: 320, hecha: false)])],
+        ejerciciosDeCasa,
+      );
+      expect(resumen.sesiones, 0);
+      expect(resumen.minutos, 0);
+    });
+
+    test('la velocidad y el ritmo salen de la distancia y el tiempo', () {
+      // 10 km en una hora: 10 km/h y seis minutos por kilómetro.
+      final s = tramo(km: 10, seg: 3600);
+      expect(velocidadDe(s), 10);
+      expect(ritmoDe(s), '6:00');
+    });
+
+    test('el ritmo redondea sin inventarse un 5:60', () {
+      // 1.079 s entre 3 km son 359,67 s/km, o sea 5 min y 59,67 s. Redondear esos segundos da
+      // 60, y «5:60» no existe: es 6:00.
+      expect(ritmoDe(tramo(km: 3, seg: 1079)), '6:00');
+    });
+
+    test('sin los dos datos no hay ritmo ni velocidad', () {
+      expect(velocidadDe(tramo(seg: 1800)), isNull);
+      expect(ritmoDe(tramo(km: 5)), isNull);
+      expect(velocidadDe(tramo(km: 0, seg: 1800)), isNull);
+    });
+  });
+
+  group('dónde se entrena', () {
+    Entreno en(String? lugar, String id, String fecha) => Entreno(
+          id: id,
+          fecha: fecha,
+          nombre: 'Entreno',
+          comienzo: DateTime.parse('${fecha}T10:00:00'),
+          fin: DateTime.parse('${fecha}T11:00:00'),
+          lugar: lugar,
+          ejercicios: [],
+        );
+
+    test('cuenta los entrenos de cada sitio, de más a menos', () {
+      final cuenta = entrenosPorLugar([
+        en('Gimnasio', 'a', '2026-08-01'),
+        en('Casa', 'b', '2026-08-02'),
+        en('Gimnasio', 'c', '2026-08-03'),
+      ]);
+      expect(cuenta.first.lugar, 'Gimnasio');
+      expect(cuenta.first.entrenos, 2);
+      expect(cuenta.last.lugar, 'Casa');
+    });
+
+    test('los entrenos sin sitio no salen', () {
+      // Inventarles un «sin sitio» llenaría el gráfico de una barra que sólo dice que antes
+      // no se apuntaba.
+      final cuenta = entrenosPorLugar([en(null, 'a', '2026-08-01'), en('  ', 'b', '2026-08-02')]);
+      expect(cuenta, isEmpty);
+    });
+
+    test('los sitios usados salen del más reciente al más antiguo y sin repetir', () {
+      final usados = lugaresUsados([
+        en('Casa', 'a', '2026-08-01'),
+        en('Gimnasio', 'b', '2026-08-05'),
+        en('gimnasio', 'c', '2026-08-03'),
+      ]);
+      expect(usados, ['Gimnasio', 'Casa']);
+    });
+  });
+
+  group('duración corta', () {
+    test('por debajo del minuto, segundos', () {
+      expect(duracionCorta(45), '45 s');
+    });
+
+    test('minutos justos y minutos con resto', () {
+      expect(duracionCorta(1800), '30 min');
+      expect(duracionCorta(1830), '30:30 min');
+    });
+
+    test('a partir de la hora, horas', () {
+      expect(duracionCorta(3600), '1 h');
+      expect(duracionCorta(3900), '1 h 5 min');
+    });
+  });
 }

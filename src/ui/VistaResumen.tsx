@@ -11,6 +11,7 @@ import type { Ejercicio, Grupo } from '../datos/ejercicios';
 import {
   duracionEnSegundos,
   seriesHechas,
+  resumenDeCardio,
   seriesPorGrupo,
   volumenDeEntreno,
   volumenPorSemana,
@@ -52,6 +53,7 @@ export function VistaResumen({
   const seriesSemana = deEstaSemana.reduce((t, e) => t + seriesHechas(e), 0);
 
   const porSemana = volumenPorSemana(hechos, lunesDe).slice(-8);
+  const cardio = resumenDeCardio(deEstaSemana, catalogo);
   const porGrupo = seriesPorGrupo(deEstaSemana, catalogo);
 
   const gruposOrdenados = (Object.entries(porGrupo) as [Grupo, number][])
@@ -116,6 +118,28 @@ export function VistaResumen({
             etiqueta="Último entreno"
             valor={diasSinEntrenar === 0 ? 'Hoy' : `Hace ${diasSinEntrenar} d`}
           />
+          {/* El cardio sólo sale si lo hay: cuando existe es la mitad de lo que hiciste esa
+              semana, y cuando no, un «0 min» fijo sería un reproche semanal. */}
+          {cardio.hayAlgo && (
+            <>
+              <Cifra
+                etiqueta="Cardio"
+                valor={cardio.minutos}
+                unidad="min"
+                delta={contar(cardio.sesiones, 'sesión', 'sesiones')}
+              />
+              <Cifra
+                etiqueta={cardio.kilometros > 0 ? 'Distancia' : 'Calorías'}
+                valor={cardio.kilometros > 0 ? cifra(cardio.kilometros, 1) : cardio.calorias}
+                unidad={cardio.kilometros > 0 ? 'km' : 'kcal'}
+                delta={
+                  cardio.kilometros > 0 && cardio.calorias > 0
+                    ? `${cifra(cardio.calorias)} kcal`
+                    : undefined
+                }
+              />
+            </>
+          )}
         </div>
       </Seccion>
 

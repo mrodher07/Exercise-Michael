@@ -186,6 +186,9 @@ class Estado extends ChangeNotifier with WidgetsBindingObserver {
     final entreno = entrenoVacio(nombre)
       ..rutinaId = rutina?.id
       ..diaId = dia?.id
+      // El sitio se hereda del último entreno: lo normal es entrenar donde se entrenó ayer, y
+      // así el dato se rellena solo salvo el día que cambias de sitio.
+      ..lugar = lugaresUsados(entrenosHechos).firstOrNull
       ..ejercicios = (dia?.ejercicios ?? const []).map((plantilla) {
         return EjercicioDelEntreno(
           id: nuevoId(),

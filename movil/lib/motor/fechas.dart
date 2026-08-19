@@ -95,6 +95,21 @@ String duracionLarga(int segundos) {
   return resto == 0 ? '$h h' : '$h h $resto min';
 }
 
+/// «45 s», «30 min», «1 h 5 min»: la duración de una serie, corta y sin adornos.
+///
+/// Distinta de `duracionLarga`, que es para un entreno entero y nunca baja del minuto. Aquí sí
+/// hacen falta los segundos: una plancha dura cuarenta y cinco.
+String duracionCorta(int segundos) {
+  final s = segundos < 0 ? 0 : segundos;
+  if (s < 60) return '$s s';
+  final min = s ~/ 60;
+  final resto = s % 60;
+  if (min < 60) return resto == 0 ? '$min min' : '$min:${_dosCifras(resto)} min';
+  final h = min ~/ 60;
+  final minutos = min % 60;
+  return minutos == 0 ? '$h h' : '$h h $minutos min';
+}
+
 String horaDe(DateTime instante) => '${instante.hour}:${_dosCifras(instante.minute)}';
 
 /// Segundos entre dos instantes. Si no hay fin, hasta ahora.

@@ -10,7 +10,9 @@
 import { useMemo, useState } from 'react';
 import type { Ejercicio, Grupo } from '../datos/ejercicios';
 import {
+  entrenosPorLugar,
   recordsDe,
+  resumenDeCardio,
   seriesHechas,
   seriesPorGrupo,
   volumenDeEntreno,
@@ -72,7 +74,7 @@ export function VistaProgreso({
         <Segmentado opciones={PESTAÑAS} elegida={pestaña} onElegir={setPestaña} />
       </Seccion>
 
-      {pestaña === 'volumen' && <Volumen entrenos={hechos} />}
+      {pestaña === 'volumen' && <Volumen entrenos={hechos} catalogo={catalogo} />}
       {pestaña === 'grupos' && <Grupos entrenos={hechos} catalogo={catalogo} />}
       {pestaña === 'records' && <Records entrenos={hechos} porId={porId} />}
       {pestaña === 'cuerpo' && (
@@ -87,11 +89,13 @@ export function VistaProgreso({
   );
 }
 
-function Volumen({ entrenos }: { entrenos: Entreno[] }) {
+function Volumen({ entrenos, catalogo }: { entrenos: Entreno[]; catalogo: Ejercicio[] }) {
   const porSemana = volumenPorSemana(entrenos, lunesDe);
   const ultimas = porSemana.slice(-12);
   const total = entrenos.reduce((t, e) => t + volumenDeEntreno(e), 0);
   const series = entrenos.reduce((t, e) => t + seriesHechas(e), 0);
+  const cardio = resumenDeCardio(entrenos, catalogo);
+  const lugares = entrenosPorLugar(entrenos);
 
   if (entrenos.length === 0) {
     return (
@@ -116,6 +120,42 @@ function Volumen({ entrenos }: { entrenos: Entreno[] }) {
           />
         </div>
       </Seccion>
+
+      {/* El cardio va aparte del volumen y no sumado a él: media hora de bici y una serie de
+          sentadillas no se pueden sumar en la misma cifra sin inventarse una equivalencia. */}
+      {cardio.hayAlgo && (
+        <Seccion titulo="Cardio">
+          <div className="rejilla auto">
+            <Cifra
+              etiqueta="Tiempo"
+              valor={cardio.minutos >= 60 ? cifra(cardio.minutos / 60, 1) : cardio.minutos}
+              unidad={cardio.minutos >= 60 ? 'h' : 'min'}
+              delta={contar(cardio.sesiones, 'sesión', 'sesiones')}
+            />
+            <Cifra
+              etiqueta="Distancia"
+              valor={cardio.kilometros > 0 ? cifra(cardio.kilometros, 1) : '—'}
+              unidad="km"
+              delta={cardio.calorias > 0 ? `${cifra(cardio.calorias)} kcal` : undefined}
+            />
+          </div>
+        </Seccion>
+      )}
+
+      {lugares.length > 0 && (
+        <Seccion titulo="Dónde entrenas">
+          <div className="panel">
+            <Barras
+              datos={lugares.map((l) => ({
+                clave: l.lugar,
+                etiqueta: l.lugar,
+                valor: l.entrenos,
+              }))}
+              formato={(n) => `${Math.round(n)}`}
+            />
+          </div>
+        </Seccion>
+      )}
 
       {ultimas.length > 1 && (
         <Seccion titulo="Últimas semanas">

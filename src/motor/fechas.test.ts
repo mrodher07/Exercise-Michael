@@ -2,6 +2,7 @@ import { describe, expect, it } from 'vitest';
 import {
   claveDia,
   diasEntre,
+  duracionCorta,
   duracionLarga,
   formatoDuracion,
   fechaDeClave,
@@ -85,5 +86,21 @@ describe('duraciones', () => {
 
   it('mide entre dos instantes', () => {
     expect(segundosEntre('2026-08-12T10:00:00.000Z', '2026-08-12T11:30:00.000Z')).toBe(5400);
+  });
+});
+
+describe('duración corta', () => {
+  it('por debajo del minuto, segundos', () => {
+    expect(duracionCorta(45)).toBe('45 s');
+  });
+
+  it('minutos justos y minutos con resto', () => {
+    expect(duracionCorta(1800)).toBe('30 min');
+    expect(duracionCorta(1830)).toBe('30:30 min');
+  });
+
+  it('a partir de la hora, horas', () => {
+    expect(duracionCorta(3600)).toBe('1 h');
+    expect(duracionCorta(3900)).toBe('1 h 5 min');
   });
 });

@@ -71,6 +71,7 @@ class VistaResumen extends StatelessWidget {
     final porSemana = volumenPorSemana(hechos);
     final ultimas = porSemana.length > 8 ? porSemana.sublist(porSemana.length - 8) : porSemana;
 
+    final cardio = resumenDeCardio(deEstaSemana, estado.catalogo);
     final porGrupo = seriesPorGrupo(deEstaSemana, estado.catalogo);
     final grupos = porGrupo.entries.where((x) => x.value > 0).toList()
       ..sort((a, b) => b.value.compareTo(a.value));
@@ -144,6 +145,37 @@ class VistaResumen extends StatelessWidget {
             ),
           ],
         ),
+        // El cardio sólo sale si lo hay. Es una fila más de números y no un panel plegado
+        // porque, cuando existe, es la mitad de lo que hiciste esa semana; y cuando no
+        // existe, un panel vacío diciendo «0 min» sería un reproche semanal.
+        if (cardio.hayAlgo) ...[
+          const SizedBox(height: 10),
+          Row(
+            children: [
+              Expanded(
+                child: Cifra(
+                  etiqueta: 'Cardio',
+                  valor: '${cardio.minutos}',
+                  unidad: 'min',
+                  delta: contar(cardio.sesiones, 'sesión', 'sesiones'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Cifra(
+                  etiqueta: cardio.kilometros > 0 ? 'Distancia' : 'Calorías',
+                  valor: cardio.kilometros > 0
+                      ? cifra(cardio.kilometros, 1)
+                      : '${cardio.calorias}',
+                  unidad: cardio.kilometros > 0 ? 'km' : 'kcal',
+                  delta: cardio.kilometros > 0 && cardio.calorias > 0
+                      ? '${cifra(cardio.calorias)} kcal'
+                      : null,
+                ),
+              ),
+            ],
+          ),
+        ],
         if (ultimas.length > 1) ...[
           const SizedBox(height: 8),
           const TituloDeSeccion('Volumen por semana'),

@@ -79,9 +79,8 @@ void main() {
     expect(estado.enCurso, isNotNull);
 
     // Añadir un ejercicio buscándolo.
-    await probador.tap(find.text('Añadir ejercicios'));
-    await probador.pumpAndSettle();
-    await probador.enterText(find.byType(TextField).first, 'press banca barra');
+    await pulsar(probador, find.text('Añadir ejercicios'));
+    await probador.enterText(find.widgetWithText(TextField, 'Buscar ejercicio'), 'press banca barra');
     await probador.pumpAndSettle();
     await probador.tap(find.text('Press de banca con barra').first);
     await probador.pumpAndSettle();
@@ -261,7 +260,7 @@ void main() {
     await irA(probador, 'Ejercicios');
 
     // Se busca uno concreto para no depender de en qué orden aparece la lista.
-    await probador.enterText(find.byType(TextField).first, 'press banca barra');
+    await probador.enterText(find.widgetWithText(TextField, 'Buscar ejercicio'), 'press banca barra');
     await probador.pumpAndSettle();
     await probador.tap(find.text('Press de banca con barra').first);
     await probador.pumpAndSettle();
@@ -338,5 +337,72 @@ void main() {
     expect(plantillas.last.reps, '6-8');
 
     otro.dispose();
+  });
+
+  testWidgets('un cardio se apunta en minutos, kilómetros y calorías', (probador) async {
+    await abrir(probador);
+    await irA(probador, 'Entrenar');
+    await probador.tap(find.text('Entreno libre'));
+    await probador.pumpAndSettle();
+
+    await pulsar(probador, find.text('Añadir ejercicios'));
+    await probador.enterText(find.widgetWithText(TextField, 'Buscar ejercicio'), 'cinta correr');
+    await probador.pumpAndSettle();
+    await probador.tap(find.text('Cinta de correr').first);
+    await probador.pumpAndSettle();
+    await probador.tap(find.textContaining('Añadir (1)'));
+    await probador.pumpAndSettle();
+
+    // Tres huecos y no dos: en cardio el RPE deja su sitio a las calorías.
+    expect(find.text('KM'), findsOne);
+    expect(find.text('MIN'), findsOne);
+    expect(find.text('KCAL'), findsOne);
+    expect(find.text('RPE'), findsNothing);
+
+    final campos = find.byType(TextField);
+    await probador.enterText(campos.at(1), '5');
+    await probador.enterText(campos.at(2), '30');
+    await probador.enterText(campos.at(3), '320');
+    await probador.pumpAndSettle();
+
+    final serie = estado.enCurso!.ejercicios.first.series.first;
+    expect(serie.distancia, 5);
+    // Se escriben minutos y por dentro se guardan segundos, como en todo lo demás.
+    expect(serie.segundos, 1800);
+    expect(serie.calorias, 320);
+
+    // Marcada la serie, el ritmo y la velocidad se calculan solos.
+    await probador.tap(find.bySemanticsLabel('Marcar la serie 1 como hecha'));
+    await probador.pumpAndSettle();
+    expect(find.text('10,0 km/h'), findsOne);
+    expect(find.text('6:00 /km'), findsOne);
+  });
+
+  testWidgets('el sitio del entreno se elige de un toque y se hereda del anterior',
+      (probador) async {
+    await abrir(probador);
+    await irA(probador, 'Entrenar');
+    await probador.tap(find.text('Entreno libre'));
+    await probador.pumpAndSettle();
+
+    expect(find.text('DÓNDE'), findsOne);
+    await probador.tap(find.widgetWithText(ChoiceChip, 'Casa'));
+    await probador.pumpAndSettle();
+    expect(estado.enCurso!.lugar, 'Casa');
+
+    // Volver a tocarlo lo quita: apuntarlo es opcional.
+    await probador.tap(find.widgetWithText(ChoiceChip, 'Casa'));
+    await probador.pumpAndSettle();
+    expect(estado.enCurso!.lugar, isNull);
+
+    await probador.tap(find.widgetWithText(ChoiceChip, 'Aire libre'));
+    await probador.pumpAndSettle();
+    expect(estado.enCurso!.lugar, 'Aire libre');
+
+    // Se cierra el entreno y el siguiente nace en el mismo sitio.
+    final primero = estado.enCurso!;
+    estado.terminarEntreno(primero);
+    final segundo = estado.empezarEntreno();
+    expect(segundo.lugar, 'Aire libre');
   });
 }

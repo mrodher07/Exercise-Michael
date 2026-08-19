@@ -80,6 +80,8 @@ class _Volumen extends StatelessWidget {
         porSemana.length > 12 ? porSemana.sublist(porSemana.length - 12) : porSemana;
     final total = hechos.fold(0.0, (t, e) => t + e.volumen);
     final series = hechos.fold(0, (t, e) => t + e.seriesHechas);
+    final cardio = resumenDeCardio(hechos, estado.catalogo);
+    final lugares = entrenosPorLugar(hechos);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -105,6 +107,48 @@ class _Volumen extends StatelessWidget {
             ),
           ],
         ),
+        // El cardio va aparte del volumen y no sumado a él: media hora de bici y una serie de
+        // sentadillas no se pueden sumar en la misma cifra sin inventarse una equivalencia.
+        if (cardio.hayAlgo) ...[
+          const SizedBox(height: 8),
+          const TituloDeSeccion('Cardio'),
+          Row(
+            children: [
+              Expanded(
+                child: Cifra(
+                  etiqueta: 'Tiempo',
+                  valor: cardio.minutos >= 60
+                      ? cifra(cardio.minutos / 60, 1)
+                      : '${cardio.minutos}',
+                  unidad: cardio.minutos >= 60 ? 'h' : 'min',
+                  delta: contar(cardio.sesiones, 'sesión', 'sesiones'),
+                ),
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Cifra(
+                  etiqueta: 'Distancia',
+                  valor: cardio.kilometros > 0 ? cifra(cardio.kilometros, 1) : '—',
+                  unidad: 'km',
+                  delta: cardio.calorias > 0 ? '${cifra(cardio.calorias)} kcal' : null,
+                ),
+              ),
+            ],
+          ),
+        ],
+        if (lugares.isNotEmpty) ...[
+          const SizedBox(height: 8),
+          const TituloDeSeccion('Dónde entrenas'),
+          Panel(
+            hijo: Barras(
+              datos: [
+                for (final l in lugares)
+                  PuntoGrafico(clave: l.lugar, etiqueta: l.lugar, valor: l.entrenos.toDouble()),
+              ],
+              formato: (n) => '${n.round()}',
+            ),
+          ),
+        ],
         if (ultimas.length > 1) ...[
           const SizedBox(height: 8),
           const TituloDeSeccion('Últimas semanas'),

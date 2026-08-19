@@ -202,6 +202,16 @@ añadir un ejercicio y olvidar su explicación pone la suite en rojo en las dos 
 - **Entrenar** — el entreno en curso y el historial. Debajo de cada ejercicio se ve lo que
   hiciste **la última vez**, que es lo que se mira para decidir si hoy toca subir. Marcar una
   serie arranca el descanso solo.
+- **Cardio** — cinta, bicicleta, elíptica, remo, assault bike, escaladora, comba y las demás
+  están en el catálogo, y se apuntan con **kilómetros, minutos y calorías**; el ritmo (min/km)
+  y la velocidad (km/h) se calculan solos, que ya están en esos números. En cardio el hueco del
+  RPE lo ocupan las calorías: en una cinta uno apunta lo que marca la máquina. Y el cardio sale
+  aparte en el resumen y en Progreso, porque el volumen —kilos × repeticiones— lo dejaba en
+  cero: media hora de bici aparecía como una semana sin entrenar.
+- **Dónde entrenas** — cada entreno puede llevar su sitio: gimnasio, casa, aire libre o el que
+  escribas. Va en el entreno y no en cada ejercicio porque una sesión ocurre en un sitio, se
+  elige de un toque, se hereda del entreno anterior y sale en el historial y en un gráfico de
+  Progreso.
 - **Ejercicios** — 297 del catálogo (máquinas, poleas, barra, mancuernas, kettlebell, peso
   corporal, bandas, multipower, anillas, cardio…) más los que crees tú. Cada uno guarda tus
   récords y su evolución, y explica **cómo se hace**: cómo colocarse, cómo es el movimiento y

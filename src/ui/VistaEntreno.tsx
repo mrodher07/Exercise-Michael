@@ -21,7 +21,11 @@ import {
   recordsBatidos,
   seriesHechas,
   serieVacia,
+  lugaresUsados,
+  ritmoDe,
+  serieCuenta,
   ultimaVezDe,
+  velocidadDe,
   volumenDeEntreno,
   type Entreno,
   type EjercicioDelEntreno,
@@ -41,6 +45,7 @@ import {
   Panel,
   Seccion,
   Vacio,
+  cifra,
   contar,
   kilos,
   volumenCorto,
@@ -295,9 +300,12 @@ function SinEntreno({
                   <span style={{ minWidth: 0 }}>
                     <span className="nombre">{entreno.nombre}</span>
                     <span className="meta">
-                      {fechaRelativa(entreno.fecha)} · {contar(seriesHechas(entreno), 'serie', 'series')}
-                      {' · '}
-                      {duracionLarga(duracionEnSegundos(entreno))}
+                      {[
+                        fechaRelativa(entreno.fecha),
+                        contar(seriesHechas(entreno), 'serie', 'series'),
+                        duracionLarga(duracionEnSegundos(entreno)),
+                        ...(entreno.lugar ? [entreno.lugar] : []),
+                      ].join(' · ')}
                     </span>
                   </span>
                   <span className="valor">{volumenCorto(volumenDeEntreno(entreno))}</span>
@@ -370,8 +378,11 @@ function DetalleDeEntreno({
     >
       <div className="pila">
         <p className="pequeno debil">
-          {fechaRelativa(entreno.fecha)} a las {horaDe(entreno.comienzo)} ·{' '}
-          {duracionLarga(duracionEnSegundos(entreno))}
+          {[
+            `${fechaRelativa(entreno.fecha)} a las ${horaDe(entreno.comienzo)}`,
+            duracionLarga(duracionEnSegundos(entreno)),
+            ...(entreno.lugar ? [entreno.lugar] : []),
+          ].join(' · ')}
         </p>
 
         <div className="rejilla auto">
@@ -515,6 +526,7 @@ function EnCurso({
             aria-label="Nombre del entreno"
             onChange={(e) => cambiar({ nombre: e.target.value })}
           />
+          <DondeSeEntrena entreno={entreno} entrenos={entrenos} cambiar={cambiar} />
           <div className="rejilla auto">
             <Cifra etiqueta="Tiempo" valor={<Reloj desde={entreno.comienzo} />} />
             <Cifra etiqueta="Series" valor={series} />
@@ -703,14 +715,80 @@ function Reloj({ desde }: { desde: string }) {
  * obligaría a escribir ceros en la mitad de los huecos, y esos ceros luego cuentan como
  * datos y estropean las medias.
  */
-function huecosDe(medida: FormaDeMedir): { clave: keyof SerieRegistrada; pista: string }[] {
+function huecosDe(
+  medida: FormaDeMedir,
+  cardio = false,
+): { clave: keyof SerieRegistrada; pista: string }[] {
   const campos = CAMPOS_DE_MEDIDA[medida];
   const huecos: { clave: keyof SerieRegistrada; pista: string }[] = [];
   if (campos.distancia) huecos.push({ clave: 'distancia', pista: 'km' });
   if (campos.peso) huecos.push({ clave: 'peso', pista: medida === 'reps' ? 'lastre' : 'kg' });
   if (campos.reps) huecos.push({ clave: 'reps', pista: 'reps' });
   if (campos.tiempo) huecos.push({ clave: 'segundos', pista: medida === 'distancia-tiempo' ? 'min' : 'seg' });
-  return huecos.slice(0, 2);
+  /* El tercer hueco sólo lo tiene el cardio, y cuando está, el RPE le deja su sitio: en una
+     cinta uno apunta lo que marca la máquina, no su esfuerzo percibido. */
+  if (cardio) huecos.push({ clave: 'calorias', pista: 'kcal' });
+  return huecos.slice(0, 3);
+}
+
+/**
+ * Dónde se está entrenando.
+ *
+ * Tres propuestas fijas —gimnasio, casa, aire libre— más los sitios ya escritos antes, y la
+ * posibilidad de escribir otro. Un toque y ya está: si hubiera que teclearlo cada vez, a la
+ * tercera sesión nadie lo rellena y el dato acaba siendo inútil.
+ */
+const LUGARES_PROPUESTOS = ['Gimnasio', 'Casa', 'Aire libre'];
+
+function DondeSeEntrena({
+  entreno,
+  entrenos,
+  cambiar,
+}: {
+  entreno: Entreno;
+  entrenos: Entreno[];
+  cambiar: (cambios: Partial<Entreno>) => void;
+}) {
+  const usados = lugaresUsados(entrenos.filter((e) => e.id !== entreno.id));
+  const opciones = [
+    ...LUGARES_PROPUESTOS,
+    ...usados.filter((l) => !LUGARES_PROPUESTOS.some((p) => p.toLowerCase() === l.toLowerCase())),
+  ];
+  const actual = entreno.lugar?.trim() ?? '';
+  const escrito = actual && !opciones.some((o) => o.toLowerCase() === actual.toLowerCase());
+
+  const preguntar = () => {
+    const texto = window.prompt('¿Dónde entrenas?', entreno.lugar ?? '');
+    if (texto === null) return;
+    cambiar({ lugar: texto.trim() || undefined });
+  };
+
+  return (
+    <div>
+      <span className="pequeno debil">Dónde</span>
+      <div className="fila suelta">
+        {opciones.map((opcion) => {
+          const elegida = actual.toLowerCase() === opcion.toLowerCase();
+          return (
+            <button
+              key={opcion}
+              type="button"
+              className="chip"
+              aria-pressed={elegida}
+              /* Volver a tocar el sitio elegido lo quita: apuntarlo es opcional y hay que
+                 poder deshacerlo sin buscar una papelera. */
+              onClick={() => cambiar({ lugar: elegida ? undefined : opcion })}
+            >
+              {opcion}
+            </button>
+          );
+        })}
+        <button type="button" className="chip" aria-pressed={Boolean(escrito)} onClick={preguntar}>
+          {escrito ? actual : 'Otro'}
+        </button>
+      </div>
+    </div>
+  );
 }
 
 /** El orden en el que rota el tipo de serie al tocar su número. */
@@ -746,7 +824,8 @@ function LineaDeEjercicio({
 }) {
   const [ajustando, setAjustando] = useState(false);
   const medida = ejercicio?.medida ?? 'peso-reps';
-  const huecos = huecosDe(medida);
+  const cardio = ejercicio?.grupo === 'Cardio';
+  const huecos = huecosDe(medida, cardio);
 
   const ultima = useMemo(
     () => ultimaVezDe(entrenos, linea.ejercicioId, entrenoId),
@@ -836,13 +915,13 @@ function LineaDeEjercicio({
         </p>
       )}
 
-      <div className="serie-cabecera">
+      <div className={`serie-cabecera${huecos.length === 3 ? ' cardio' : ''}`}>
         <span>#</span>
         {huecos.map((h) => (
           <span key={String(h.clave)}>{h.pista}</span>
         ))}
         {huecos.length < 2 && <span />}
-        <span>RPE</span>
+        {huecos.length < 3 && <span>RPE</span>}
         <span />
       </div>
 
@@ -852,7 +931,12 @@ function LineaDeEjercicio({
         const numero =
           linea.series.slice(0, indice + 1).filter((s) => s.tipo !== 'calentamiento').length;
         return (
-          <div key={indice} className={`serie${serie.tipo === 'calentamiento' ? ' calentamiento' : ''}`}>
+          <div
+            key={indice}
+            className={`serie${serie.tipo === 'calentamiento' ? ' calentamiento' : ''}${
+              huecos.length === 3 ? ' cardio' : ''
+            }`}
+          >
             <button
               type="button"
               className="indice"
@@ -887,12 +971,14 @@ function LineaDeEjercicio({
             })}
             {huecos.length < 2 && <span />}
 
-            <Numero
-              valor={serie.rpe}
-              etiqueta={`RPE de la serie ${numero}`}
-              placeholder="–"
-              onCambiar={(v) => cambiarSerie(indice, { rpe: v })}
-            />
+            {huecos.length < 3 && (
+              <Numero
+                valor={serie.rpe}
+                etiqueta={`RPE de la serie ${numero}`}
+                placeholder="–"
+                onCambiar={(v) => cambiarSerie(indice, { rpe: v })}
+              />
+            )}
 
             <button
               type="button"
@@ -922,13 +1008,29 @@ function LineaDeEjercicio({
           </button>
         )}
         <span className="hueco" />
-        {mejor && (
-          <span className="etiqueta-pill">
-            <IconoChispa />
-            {kilos(mejor.peso)}×{mejor.reps}
-            {mejor.estimado ? ` · ~${kilos(mejor.estimado)} kg` : ''}
-          </span>
-        )}
+        {/* En cardio, el ritmo y la velocidad se calculan de los kilómetros y el tiempo:
+            pedirlos como un campo más sería pedir un número que ya está apuntado. */}
+        {cardio
+          ? linea.series
+              .filter(serieCuenta)
+              .slice(0, 1)
+              .map((serie, i) => (
+                <span key={i} className="fila suelta">
+                  {velocidadDe(serie) !== null && (
+                    <span className="etiqueta-pill">{cifra(velocidadDe(serie) as number, 1)} km/h</span>
+                  )}
+                  {ritmoDe(serie) !== null && (
+                    <span className="etiqueta-pill">{ritmoDe(serie)} /km</span>
+                  )}
+                </span>
+              ))
+          : mejor && (
+              <span className="etiqueta-pill">
+                <IconoChispa />
+                {kilos(mejor.peso)}×{mejor.reps}
+                {mejor.estimado ? ` · ~${kilos(mejor.estimado)} kg` : ''}
+              </span>
+            )}
       </div>
 
       {ajustando && (

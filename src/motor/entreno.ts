@@ -18,6 +18,15 @@ export interface SerieRegistrada {
   segundos?: number;
   /** Kilómetros. */
   distancia?: number;
+  /**
+   * Las calorías que dice la máquina de cardio.
+   *
+   * Se guardan porque es el número que la gente apunta de una cinta o una bici, y porque sin
+   * él una sesión de cardio no deja rastro en las estadísticas: no tiene kilos ni
+   * repeticiones. Que la máquina las calcule a ojo no lo hace inútil: sirve para comparar la
+   * misma máquina consigo misma de una semana a otra.
+   */
+  calorias?: number;
   /** Esfuerzo percibido, 1 a 10. */
   rpe?: number;
   /** Marcada como hecha. Lo que no está hecho no cuenta para nada. */
@@ -60,6 +69,15 @@ export interface Entreno {
   notas?: string;
   /** Cómo ha ido, de 1 a 5. */
   sensacion?: number;
+  /**
+   * Dónde se entrenó: «Gimnasio», «Casa», «Aire libre» o lo que uno escriba.
+   *
+   * Va en el entreno y no en cada ejercicio porque una sesión ocurre en un sitio: marcarlo
+   * ejercicio a ejercicio sería repetir el mismo dato ocho veces para que nunca cambie. Es
+   * texto libre y no una lista cerrada porque «Gimnasio de la uni» y «Parque de casa de mis
+   * padres» son respuestas legítimas, y una lista de tres opciones obliga a mentir.
+   */
+  lugar?: string;
   ejercicios: EjercicioDelEntreno[];
 }
 
@@ -361,4 +379,111 @@ export function ultimaVezDe(
     if (series.length > 0) return { fecha: entreno.fecha, series };
   }
   return null;
+}
+
+// ─────────────────────────── Cardio ───────────────────────────
+
+export interface ResumenDeCardio {
+  /** Ejercicios de cardio hechos, no entrenos: dos máquinas el mismo día son dos. */
+  sesiones: number;
+  segundos: number;
+  kilometros: number;
+  calorias: number;
+  minutos: number;
+  hayAlgo: boolean;
+}
+
+/**
+ * Suma el cardio de unos entrenos.
+ *
+ * Hace falta porque el volumen —kilos por repeticiones— deja el cardio en cero: media hora de
+ * cinta no tiene kilos ni repeticiones, así que sin esto una semana de bici aparecía en el
+ * resumen como una semana sin entrenar.
+ */
+export function resumenDeCardio(entrenos: Entreno[], catalogo: Ejercicio[]): ResumenDeCardio {
+  const deCardio = new Set(catalogo.filter((e) => e.grupo === 'Cardio').map((e) => e.id));
+
+  let sesiones = 0;
+  let segundos = 0;
+  let kilometros = 0;
+  let calorias = 0;
+
+  for (const entreno of entrenos) {
+    for (const linea of entreno.ejercicios) {
+      if (!deCardio.has(linea.ejercicioId)) continue;
+      const hechas = linea.series.filter(serieCuenta);
+      if (hechas.length === 0) continue;
+      sesiones++;
+      for (const s of hechas) {
+        segundos += s.segundos ?? 0;
+        kilometros += s.distancia ?? 0;
+        calorias += s.calorias ?? 0;
+      }
+    }
+  }
+
+  return {
+    sesiones,
+    segundos,
+    kilometros,
+    calorias,
+    minutos: Math.round(segundos / 60),
+    hayAlgo: sesiones > 0,
+  };
+}
+
+/**
+ * La velocidad media de una serie de cardio, en km/h, o `null` si no da para calcularla.
+ *
+ * Se calcula y no se apunta: pedirla sería pedir un número que ya está en los otros dos, y uno
+ * más que rellenar entre jadeos.
+ */
+export function velocidadDe(serie: SerieRegistrada): number | null {
+  const km = serie.distancia;
+  const seg = serie.segundos;
+  if (!km || !seg || km <= 0 || seg <= 0) return null;
+  return km / (seg / 3600);
+}
+
+/** El ritmo medio en minutos por kilómetro, como `5:30`. Es como se lee al correr o remar. */
+export function ritmoDe(serie: SerieRegistrada): string | null {
+  const km = serie.distancia;
+  const seg = serie.segundos;
+  if (!km || !seg || km <= 0 || seg <= 0) return null;
+  const porKm = seg / km;
+  const minutos = Math.floor(porKm / 60);
+  const restoSegundos = Math.round(porKm % 60);
+  /* Los 60 segundos redondeados hacia arriba son 5:60, que no existe. */
+  if (restoSegundos === 60) return `${minutos + 1}:00`;
+  return `${minutos}:${String(restoSegundos).padStart(2, '0')}`;
+}
+
+/**
+ * Cuántos entrenos se hicieron en cada sitio, de más a menos.
+ *
+ * Los entrenos sin lugar apuntado no salen: inventarles un «sin sitio» llenaría el gráfico de
+ * una barra que sólo dice que antes no se apuntaba.
+ */
+export function entrenosPorLugar(entrenos: Entreno[]): { lugar: string; entrenos: number }[] {
+  const cuenta = new Map<string, number>();
+  for (const entreno of entrenos) {
+    const lugar = entreno.lugar?.trim();
+    if (!lugar) continue;
+    cuenta.set(lugar, (cuenta.get(lugar) ?? 0) + 1);
+  }
+  return [...cuenta.entries()]
+    .map(([lugar, n]) => ({ lugar, entrenos: n }))
+    .sort((a, b) => b.entrenos - a.entrenos || a.lugar.localeCompare(b.lugar));
+}
+
+/** Los sitios ya usados, del más reciente al más antiguo, para proponerlos sin escribir. */
+export function lugaresUsados(entrenos: Entreno[]): string[] {
+  const vistos: string[] = [];
+  const ordenados = [...entrenos].sort((a, b) => b.comienzo.localeCompare(a.comienzo));
+  for (const entreno of ordenados) {
+    const lugar = entreno.lugar?.trim();
+    if (!lugar) continue;
+    if (!vistos.some((x) => x.toLowerCase() === lugar.toLowerCase())) vistos.push(lugar);
+  }
+  return vistos;
 }

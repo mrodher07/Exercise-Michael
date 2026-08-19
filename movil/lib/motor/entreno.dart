@@ -32,6 +32,7 @@ class SerieRegistrada {
     this.reps,
     this.segundos,
     this.distancia,
+    this.calorias,
     this.rpe,
     this.hecha = false,
     this.tipo = TipoDeSerie.normal,
@@ -46,6 +47,14 @@ class SerieRegistrada {
 
   /// Kilómetros.
   double? distancia;
+
+  /// Las calorías que dice la máquina de cardio.
+  ///
+  /// Se guardan porque es el número que la gente apunta de una cinta o una bici, y porque sin
+  /// él una sesión de cardio no deja rastro en las estadísticas: no tiene kilos ni
+  /// repeticiones. Que la máquina las calcule a ojo no lo hace inútil: sirve para comparar la
+  /// misma máquina consigo misma de una semana a otra.
+  int? calorias;
 
   /// Esfuerzo percibido, 1 a 10.
   int? rpe;
@@ -65,6 +74,7 @@ class SerieRegistrada {
         reps: reps,
         segundos: segundos,
         distancia: distancia,
+        calorias: calorias,
         rpe: rpe,
         hecha: hecha,
         tipo: tipo,
@@ -75,6 +85,7 @@ class SerieRegistrada {
         'reps': reps,
         'segundos': segundos,
         'distancia': distancia,
+        'calorias': calorias,
         'rpe': rpe,
         'hecha': hecha,
         'tipo': tipo.clave,
@@ -85,6 +96,7 @@ class SerieRegistrada {
         reps: (j['reps'] as num?)?.toInt(),
         segundos: (j['segundos'] as num?)?.toInt(),
         distancia: (j['distancia'] as num?)?.toDouble(),
+        calorias: (j['calorias'] as num?)?.toInt(),
         rpe: (j['rpe'] as num?)?.toInt(),
         hecha: (j['hecha'] as bool?) ?? false,
         tipo: TipoDeSerie.deClave(j['tipo'] as String?),
@@ -143,6 +155,7 @@ class Entreno {
     this.diaId,
     this.notas,
     this.sensacion,
+    this.lugar,
   }) : actualizadoEn = actualizadoEn ?? DateTime.now();
 
   final String id;
@@ -165,6 +178,14 @@ class Entreno {
   /// Cómo ha ido, de 1 a 5.
   int? sensacion;
 
+  /// Dónde se entrenó: «Gimnasio», «Casa», «Aire libre» o lo que uno escriba.
+  ///
+  /// Va en el entreno y no en cada ejercicio porque una sesión ocurre en un sitio: marcarlo
+  /// ejercicio a ejercicio sería repetir el mismo dato ocho veces para que nunca cambie. Es
+  /// texto libre y no una lista cerrada porque «Gimnasio de la uni» y «Parque de casa de mis
+  /// padres» son respuestas legítimas, y una lista de tres opciones obliga a mentir.
+  String? lugar;
+
   List<EjercicioDelEntreno> ejercicios;
 
   bool get enCurso => fin == null;
@@ -186,6 +207,7 @@ class Entreno {
         'diaId': diaId,
         'notas': notas,
         'sensacion': sensacion,
+        'lugar': lugar,
         'ejercicios': ejercicios.map((e) => e.aJson()).toList(),
       };
 
@@ -200,6 +222,7 @@ class Entreno {
         diaId: j['diaId'] as String?,
         notas: j['notas'] as String?,
         sensacion: (j['sensacion'] as num?)?.toInt(),
+        lugar: j['lugar'] as String?,
         ejercicios: ((j['ejercicios'] as List?) ?? const [])
             .map((e) => EjercicioDelEntreno.deJson(e as Map<String, dynamic>))
             .toList(),
@@ -538,4 +561,118 @@ bool tocaRecordarCopia({
   // probando la aplicación, no guardando un historial.
   if (ultimaCopia == null) return false;
   return ahora.difference(ultimaCopia).inDays >= diasParaRecordarCopia;
+}
+
+// ─────────────────────────── Cardio ───────────────────────────
+
+/// Lo que se hizo de cardio: minutos, kilómetros y calorías.
+class ResumenDeCardio {
+  const ResumenDeCardio({
+    required this.sesiones,
+    required this.segundos,
+    required this.kilometros,
+    required this.calorias,
+  });
+
+  /// Ejercicios de cardio hechos, no entrenos: dos máquinas el mismo día son dos.
+  final int sesiones;
+  final int segundos;
+  final double kilometros;
+  final int calorias;
+
+  int get minutos => (segundos / 60).round();
+  bool get hayAlgo => sesiones > 0;
+}
+
+/// Suma el cardio de unos entrenos.
+///
+/// Hace falta porque el volumen —kilos por repeticiones— deja el cardio en cero: media hora de
+/// cinta no tiene kilos ni repeticiones, así que sin esto una semana de bici aparecía en el
+/// resumen como una semana sin entrenar.
+ResumenDeCardio resumenDeCardio(List<Entreno> entrenos, List<Ejercicio> catalogo) {
+  final deCardio = {
+    for (final e in catalogo)
+      if (e.grupo == Grupo.cardio) e.id,
+  };
+
+  var sesiones = 0;
+  var segundos = 0;
+  var kilometros = 0.0;
+  var calorias = 0;
+
+  for (final entreno in entrenos) {
+    for (final linea in entreno.ejercicios) {
+      if (!deCardio.contains(linea.ejercicioId)) continue;
+      final hechas = linea.series.where((s) => s.cuenta).toList();
+      if (hechas.isEmpty) continue;
+      sesiones++;
+      for (final s in hechas) {
+        segundos += s.segundos ?? 0;
+        kilometros += s.distancia ?? 0;
+        calorias += s.calorias ?? 0;
+      }
+    }
+  }
+
+  return ResumenDeCardio(
+    sesiones: sesiones,
+    segundos: segundos,
+    kilometros: kilometros,
+    calorias: calorias,
+  );
+}
+
+/// La velocidad media de una serie de cardio, en km/h, o `null` si no da para calcularla.
+///
+/// Se calcula y no se apunta: pedirla sería pedir un número que ya está en los otros dos, y
+/// uno más que rellenar entre jadeos.
+double? velocidadDe(SerieRegistrada serie) {
+  final km = serie.distancia;
+  final seg = serie.segundos;
+  if (km == null || seg == null || km <= 0 || seg <= 0) return null;
+  return km / (seg / 3600);
+}
+
+/// El ritmo medio en minutos por kilómetro, como `5:30`. Es como se lee al correr o remar.
+String? ritmoDe(SerieRegistrada serie) {
+  final km = serie.distancia;
+  final seg = serie.segundos;
+  if (km == null || seg == null || km <= 0 || seg <= 0) return null;
+  final porKm = seg / km;
+  final minutos = porKm ~/ 60;
+  final restoSegundos = (porKm % 60).round();
+  // Los 60 segundos redondeados hacia arriba son 5:60, que no existe.
+  if (restoSegundos == 60) return '${minutos + 1}:00';
+  return '$minutos:${restoSegundos.toString().padLeft(2, '0')}';
+}
+
+/// Cuántos entrenos se hicieron en cada sitio, de más a menos.
+///
+/// Los entrenos sin lugar apuntado no salen: inventarles un «sin sitio» llenaría el gráfico de
+/// una barra que sólo dice que antes no se apuntaba.
+List<({String lugar, int entrenos})> entrenosPorLugar(List<Entreno> entrenos) {
+  final cuenta = <String, int>{};
+  for (final entreno in entrenos) {
+    final lugar = entreno.lugar?.trim();
+    if (lugar == null || lugar.isEmpty) continue;
+    cuenta[lugar] = (cuenta[lugar] ?? 0) + 1;
+  }
+  final lista = [for (final e in cuenta.entries) (lugar: e.key, entrenos: e.value)];
+  lista.sort((a, b) {
+    if (a.entrenos != b.entrenos) return b.entrenos.compareTo(a.entrenos);
+    return a.lugar.toLowerCase().compareTo(b.lugar.toLowerCase());
+  });
+  return lista;
+}
+
+/// Los sitios ya usados, del más reciente al más antiguo, para proponerlos sin escribir.
+List<String> lugaresUsados(List<Entreno> entrenos) {
+  final vistos = <String>[];
+  final ordenados = [...entrenos]..sort((a, b) => b.comienzo.compareTo(a.comienzo));
+  for (final entreno in ordenados) {
+    final lugar = entreno.lugar?.trim();
+    if (lugar == null || lugar.isEmpty) continue;
+    if (!vistos.any((x) => x.toLowerCase() == lugar.toLowerCase())) vistos.add(lugar);
+  }
+  return vistos;
 }

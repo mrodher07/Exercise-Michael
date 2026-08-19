@@ -103,6 +103,24 @@ export function duracionLarga(segundos: number): string {
   return resto === 0 ? `${h} h` : `${h} h ${resto} min`;
 }
 
+/**
+ * «45 s», «30 min», «1 h 5 min»: la duración de una serie, corta y sin adornos.
+ *
+ * Distinta de `duracionLarga`, que es para un entreno entero y nunca baja del minuto. Aquí sí
+ * hacen falta los segundos: una plancha dura cuarenta y cinco.
+ */
+export function duracionCorta(segundos: number): string {
+  const dosCifras = (n: number) => `${n}`.padStart(2, '0');
+  const s = segundos < 0 ? 0 : segundos;
+  if (s < 60) return `${s} s`;
+  const min = Math.floor(s / 60);
+  const resto = s % 60;
+  if (min < 60) return resto === 0 ? `${min} min` : `${min}:${dosCifras(resto)} min`;
+  const h = Math.floor(min / 60);
+  const minutos = min % 60;
+  return minutos === 0 ? `${h} h` : `${h} h ${minutos} min`;
+}
+
 export function horaDe(iso: string): string {
   const f = new Date(iso);
   return `${f.getHours()}:${`${f.getMinutes()}`.padStart(2, '0')}`;

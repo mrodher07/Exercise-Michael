@@ -126,9 +126,12 @@ class _SinEntreno extends StatelessWidget {
                   icono: Icons.fitness_center,
                   iconoAcento: true,
                   nombre: entreno.nombre,
-                  meta: '${fechaRelativa(entreno.fecha)} · '
-                      '${contar(entreno.seriesHechas, 'serie', 'series')} · '
-                      '${duracionLarga(entreno.duracionEnSegundos)}',
+                  meta: [
+                    fechaRelativa(entreno.fecha),
+                    contar(entreno.seriesHechas, 'serie', 'series'),
+                    duracionLarga(entreno.duracionEnSegundos),
+                    if (entreno.lugar != null && entreno.lugar!.isNotEmpty) entreno.lugar!,
+                  ].join(' · '),
                   valor: volumenCorto(entreno.volumen),
                   onPulsar: () => _abrirDetalle(context, entreno),
                 ),
@@ -161,8 +164,11 @@ class _DetalleDeEntreno extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: [
         Text(
-          '${fechaRelativa(entreno.fecha)} a las ${horaDe(entreno.comienzo)} · '
-          '${duracionLarga(entreno.duracionEnSegundos)}',
+          [
+            '${fechaRelativa(entreno.fecha)} a las ${horaDe(entreno.comienzo)}',
+            duracionLarga(entreno.duracionEnSegundos),
+            if (entreno.lugar != null && entreno.lugar!.isNotEmpty) entreno.lugar!,
+          ].join(' · '),
           style: TextStyle(fontSize: 12.5, color: c.textoDebil),
         ),
         const SizedBox(height: 12),
@@ -275,6 +281,8 @@ class _EnCurso extends StatelessWidget {
                   estado.entrenoTocado(entreno);
                 },
               ),
+              const SizedBox(height: 10),
+              _DondeSeEntrena(entreno: entreno),
               const SizedBox(height: 12),
               Row(
                 children: [
@@ -454,6 +462,117 @@ class _EnCurso extends StatelessWidget {
   }
 }
 
+/// Dónde se está entrenando.
+///
+/// Tres propuestas fijas —gimnasio, casa, aire libre— más los sitios que ya se hayan escrito
+/// antes, y la posibilidad de escribir otro. Un toque y ya está: si hubiera que teclearlo cada
+/// vez, a la tercera sesión nadie lo rellena y el dato acaba siendo inútil.
+///
+/// Se propone solo el del último entreno, porque lo normal es entrenar donde se entrenó ayer.
+class _DondeSeEntrena extends StatelessWidget {
+  const _DondeSeEntrena({required this.entreno});
+
+  final Entreno entreno;
+
+  static const _propuestas = ['Gimnasio', 'Casa', 'Aire libre'];
+
+  @override
+  Widget build(BuildContext context) {
+    final estado = ProveedorDeEstado.de(context);
+    final c = ColoresFitLog.de(context);
+
+    final usados = lugaresUsados(estado.entrenosHechos);
+    final opciones = [
+      ..._propuestas,
+      for (final lugar in usados)
+        if (!_propuestas.any((p) => p.toLowerCase() == lugar.toLowerCase())) lugar,
+    ];
+    final actual = entreno.lugar?.trim() ?? '';
+
+    void poner(String? lugar) {
+      entreno.lugar = lugar;
+      estado.entrenoTocado(entreno);
+    }
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Text(
+          'DÓNDE',
+          style: TextStyle(
+            fontSize: 10.5,
+            fontWeight: FontWeight.w800,
+            letterSpacing: 0.5,
+            color: c.textoDebil,
+          ),
+        ),
+        const SizedBox(height: 6),
+        Wrap(
+          spacing: 6,
+          runSpacing: 6,
+          children: [
+            for (final opcion in opciones)
+              ChoiceChip(
+                label: Text(opcion),
+                selected: actual.toLowerCase() == opcion.toLowerCase(),
+                // Volver a tocar el sitio elegido lo quita: apuntarlo es opcional y hay que
+                // poder deshacerlo sin buscar una papelera.
+                onSelected: (marcado) => poner(marcado ? opcion : null),
+              ),
+            ActionChip(
+              avatar: const Icon(Icons.edit_outlined, size: 16),
+              label: Text(
+                actual.isNotEmpty && !opciones.any((o) => o.toLowerCase() == actual.toLowerCase())
+                    ? actual
+                    : 'Otro',
+              ),
+              onPressed: () => _escribirLugar(context, entreno, poner),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+
+  Future<void> _escribirLugar(
+    BuildContext context,
+    Entreno entreno,
+    void Function(String?) poner,
+  ) async {
+    final control = TextEditingController(text: entreno.lugar ?? '');
+    final escrito = await showDialog<String>(
+      context: context,
+      builder: (contexto) => AlertDialog(
+        title: const Text('Dónde entrenas'),
+        content: TextField(
+          controller: control,
+          autofocus: true,
+          textCapitalization: TextCapitalization.sentences,
+          decoration: const InputDecoration(
+            labelText: 'Sitio',
+            hintText: 'Gimnasio de la uni, parque, hotel...',
+          ),
+          onSubmitted: (texto) => Navigator.pop(contexto, texto),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(contexto),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.pop(contexto, control.text),
+            child: const Text('Guardar'),
+          ),
+        ],
+      ),
+    );
+    control.dispose();
+    if (escrito == null) return;
+    final limpio = escrito.trim();
+    poner(limpio.isEmpty ? null : limpio);
+  }
+}
+
 /// El tiempo que lleva el entreno. Va en su propio widget para que su latido de cada segundo
 /// no repinte la pantalla entera.
 class _RelojDelEntreno extends StatefulWidget {
@@ -485,9 +604,15 @@ class _RelojDelEntrenoState extends State<_RelojDelEntreno> {
 /// Una plancha no tiene repeticiones y la cinta no tiene peso: pedir siempre «kg» y «reps»
 /// obligaría a escribir ceros en la mitad de los huecos, y esos ceros luego cuentan como
 /// datos y estropean las medias.
-enum _Hueco { peso, reps, segundos, distancia }
+enum _Hueco { peso, reps, segundos, distancia, calorias }
 
-List<({_Hueco cual, String pista})> _huecosDe(FormaDeMedir medida) {
+/// Qué huecos se pintan en cada serie.
+///
+/// Como mucho tres, y el tercero sólo lo tiene el cardio: en una pantalla de móvil no caben
+/// más campos sin que cada uno quede demasiado estrecho para escribir con el pulgar. Cuando
+/// hay tres, el RPE deja su sitio a las calorías; en una cinta uno apunta lo que marca la
+/// máquina, no su esfuerzo percibido.
+List<({_Hueco cual, String pista})> _huecosDe(FormaDeMedir medida, {bool cardio = false}) {
   final huecos = <({_Hueco cual, String pista})>[];
   if (medida.pideDistancia) huecos.add((cual: _Hueco.distancia, pista: 'km'));
   if (medida.pidePeso) huecos.add((cual: _Hueco.peso, pista: 'kg'));
@@ -501,7 +626,8 @@ List<({_Hueco cual, String pista})> _huecosDe(FormaDeMedir medida) {
       pista: medida == FormaDeMedir.distanciaTiempo ? 'min' : 'seg',
     ));
   }
-  return huecos.take(2).toList();
+  if (cardio) huecos.add((cual: _Hueco.calorias, pista: 'kcal'));
+  return huecos.take(3).toList();
 }
 
 /// El orden en el que rota el tipo de serie al tocar su número.
@@ -527,7 +653,8 @@ class _LineaDeEjercicio extends StatelessWidget {
     final c = ColoresFitLog.de(context);
     final ejercicio = estado.ejercicioPorId(linea.ejercicioId);
     final medida = ejercicio?.medida ?? FormaDeMedir.pesoReps;
-    final huecos = _huecosDe(medida);
+    final cardio = ejercicio?.grupo == Grupo.cardio;
+    final huecos = _huecosDe(medida, cardio: cardio);
     final ultima = ultimaVezDe(estado.entrenos, linea.ejercicioId, excluir: entreno.id);
     final mejor = mejorSerie(linea.series, entreno.fecha);
 
@@ -656,7 +783,19 @@ class _LineaDeEjercicio extends StatelessWidget {
                 ),
               ],
               const Spacer(),
-              if (mejor != null)
+              // En cardio, el ritmo y la velocidad se calculan de los kilómetros y el tiempo.
+              // Pedirlos como un campo más sería pedir un número que ya está apuntado, y uno
+              // más que rellenar entre jadeos.
+              if (cardio) ...[
+                for (final serie in linea.series.where((x) => x.cuenta).take(1)) ...[
+                  if (velocidadDe(serie) != null)
+                    EtiquetaPill('${cifra(velocidadDe(serie)!, 1)} km/h'),
+                  if (ritmoDe(serie) != null) ...[
+                    const SizedBox(width: 6),
+                    EtiquetaPill('${ritmoDe(serie)} /km'),
+                  ],
+                ],
+              ] else if (mejor != null)
                 EtiquetaPill(
                   '${kilos(mejor.peso)}×${mejor.reps}'
                   '${mejor.estimado != null ? ' · ~${kilos(mejor.estimado!)}' : ''}',
@@ -671,7 +810,13 @@ class _LineaDeEjercicio extends StatelessWidget {
   static String _resumenDeSerie(SerieRegistrada s) {
     if (s.peso != null && s.reps != null) return '${kilos(s.peso!)}×${s.reps}';
     if (s.reps != null) return '${s.reps} reps';
-    if (s.segundos != null) return '${s.segundos} s';
+    // El cardio se lee en kilómetros y minutos, no en segundos: «1.800 s» no le dice nada a
+    // nadie que acabe de bajarse de la cinta.
+    if (s.distancia != null && s.segundos != null) {
+      return '${kilos(s.distancia!)} km · ${duracionCorta(s.segundos!)}';
+    }
+    if (s.distancia != null) return '${kilos(s.distancia!)} km';
+    if (s.segundos != null) return duracionCorta(s.segundos!);
     return '—';
   }
 
@@ -783,8 +928,10 @@ class _CabeceraDeSeries extends StatelessWidget {
             etiqueta(hueco.pista, expandir: true),
           ],
           if (huecos.length < 2) const Expanded(child: SizedBox.shrink()),
-          const SizedBox(width: 6),
-          etiqueta('RPE', ancho: 52),
+          if (huecos.length < 3) ...[
+            const SizedBox(width: 6),
+            etiqueta('RPE', ancho: 52),
+          ],
           const SizedBox(width: 6),
           const SizedBox(width: 44),
         ],
@@ -864,19 +1011,21 @@ class _FilaDeSerie extends StatelessWidget {
             Expanded(child: _campo(hueco, estado)),
           ],
           if (huecos.length < 2) const Expanded(child: SizedBox.shrink()),
-          const SizedBox(width: 6),
-          SizedBox(
-            width: 52,
-            child: CampoNumero(
-              valor: serie.rpe,
-              pista: '–',
-              decimal: false,
-              onCambiar: (v) {
-                serie.rpe = v?.toInt();
-                estado.entrenoTocado(entreno);
-              },
+          if (huecos.length < 3) ...[
+            const SizedBox(width: 6),
+            SizedBox(
+              width: 52,
+              child: CampoNumero(
+                valor: serie.rpe,
+                pista: '–',
+                decimal: false,
+                onCambiar: (v) {
+                  serie.rpe = v?.toInt();
+                  estado.entrenoTocado(entreno);
+                },
+              ),
             ),
-          ),
+          ],
           const SizedBox(width: 6),
           SizedBox(
             width: 44,
@@ -927,6 +1076,7 @@ class _FilaDeSerie extends StatelessWidget {
           ? (serie.segundos == null ? null : (serie.segundos! / 60).round())
           : serie.segundos,
       _Hueco.distancia => serie.distancia,
+      _Hueco.calorias => serie.calorias,
     };
 
     return CampoNumero(
@@ -943,6 +1093,8 @@ class _FilaDeSerie extends StatelessWidget {
             serie.segundos = v == null ? null : (enMinutos ? (v * 60).round() : v.toInt());
           case _Hueco.distancia:
             serie.distancia = v?.toDouble();
+          case _Hueco.calorias:
+            serie.calorias = v?.toInt();
         }
         estado.entrenoTocado(entreno);
       },

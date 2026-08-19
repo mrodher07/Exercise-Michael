@@ -1,13 +1,18 @@
 import { describe, expect, it } from 'vitest';
 import {
+  entrenosPorLugar,
   historialDe,
+  lugaresUsados,
   mejorSerie,
   recordsBatidos,
   recordsDe,
+  resumenDeCardio,
+  ritmoDe,
   seriesHechas,
   seriesPorGrupo,
   ultimaVezDe,
   unaRepeticionMaxima,
+  velocidadDe,
   volumenDeEntreno,
   type Entreno,
   type SerieRegistrada,
@@ -203,5 +208,107 @@ describe('series por grupo', () => {
       [...EJERCICIOS],
     );
     expect(Object.keys(cuenta)).toHaveLength(0);
+  });
+});
+
+describe('cardio', () => {
+  const tramo = (s: Partial<SerieRegistrada>): SerieRegistrada => ({
+    hecha: true,
+    tipo: 'normal',
+    ...s,
+  });
+
+  const conCardio = (ejercicioId: string, series: SerieRegistrada[]): Entreno => ({
+    id: `c-${ejercicioId}`,
+    actualizadoEn: '2026-08-19T11:00:00.000Z',
+    fecha: '2026-08-19',
+    nombre: 'Cardio',
+    rutinaId: null,
+    diaId: null,
+    comienzo: '2026-08-19T10:00:00.000Z',
+    fin: '2026-08-19T10:40:00.000Z',
+    ejercicios: [{ id: 'l1', ejercicioId, series, descanso: 90 }],
+  });
+
+  it('suma minutos, kilómetros y calorías', () => {
+    const resumen = resumenDeCardio(
+      [
+        conCardio('cinta-de-correr', [tramo({ distancia: 5, segundos: 1800, calorias: 320 })]),
+        conCardio('bicicleta-estatica', [tramo({ distancia: 12, segundos: 1800, calorias: 250 })]),
+      ],
+      EJERCICIOS,
+    );
+    expect(resumen.sesiones).toBe(2);
+    expect(resumen.minutos).toBe(60);
+    expect(resumen.kilometros).toBe(17);
+    expect(resumen.calorias).toBe(570);
+  });
+
+  it('la fuerza no cuenta como cardio', () => {
+    const pesas = conCardio('press-de-banca-con-barra', [tramo({ peso: 80, reps: 8 })]);
+    expect(resumenDeCardio([pesas], EJERCICIOS).hayAlgo).toBe(false);
+  });
+
+  it('lo que no se marca no suma', () => {
+    const resumen = resumenDeCardio(
+      [conCardio('cinta-de-correr', [tramo({ distancia: 5, segundos: 1800, hecha: false })])],
+      EJERCICIOS,
+    );
+    expect(resumen.sesiones).toBe(0);
+  });
+
+  it('la velocidad y el ritmo salen de la distancia y el tiempo', () => {
+    // 10 km en una hora: 10 km/h y seis minutos por kilómetro.
+    const s = tramo({ distancia: 10, segundos: 3600 });
+    expect(velocidadDe(s)).toBe(10);
+    expect(ritmoDe(s)).toBe('6:00');
+  });
+
+  it('el ritmo redondea sin inventarse un 5:60', () => {
+    // 1.079 s entre 3 km son 359,67 s/km: 5 min y 59,67 s, que redondeado es 6:00.
+    expect(ritmoDe(tramo({ distancia: 3, segundos: 1079 }))).toBe('6:00');
+  });
+
+  it('sin los dos datos no hay ritmo ni velocidad', () => {
+    expect(velocidadDe(tramo({ segundos: 1800 }))).toBeNull();
+    expect(ritmoDe(tramo({ distancia: 5 }))).toBeNull();
+  });
+});
+
+describe('dónde se entrena', () => {
+  const en = (lugar: string | undefined, id: string, fecha: string): Entreno => ({
+    id,
+    actualizadoEn: `${fecha}T11:00:00.000Z`,
+    fecha,
+    nombre: 'Entreno',
+    rutinaId: null,
+    diaId: null,
+    comienzo: `${fecha}T10:00:00.000Z`,
+    fin: `${fecha}T11:00:00.000Z`,
+    lugar,
+    ejercicios: [],
+  });
+
+  it('cuenta los entrenos de cada sitio, de más a menos', () => {
+    const cuenta = entrenosPorLugar([
+      en('Gimnasio', 'a', '2026-08-01'),
+      en('Casa', 'b', '2026-08-02'),
+      en('Gimnasio', 'c', '2026-08-03'),
+    ]);
+    expect(cuenta[0]).toEqual({ lugar: 'Gimnasio', entrenos: 2 });
+    expect(cuenta[1]).toEqual({ lugar: 'Casa', entrenos: 1 });
+  });
+
+  it('los entrenos sin sitio no salen', () => {
+    expect(entrenosPorLugar([en(undefined, 'a', '2026-08-01'), en('  ', 'b', '2026-08-02')])).toEqual([]);
+  });
+
+  it('los sitios usados salen del más reciente y sin repetir', () => {
+    const usados = lugaresUsados([
+      en('Casa', 'a', '2026-08-01'),
+      en('Gimnasio', 'b', '2026-08-05'),
+      en('gimnasio', 'c', '2026-08-03'),
+    ]);
+    expect(usados).toEqual(['Gimnasio', 'Casa']);
   });
 });

@@ -594,6 +594,12 @@ a { color: var(--acento); text-decoration: none; }
   gap: 7px;
   align-items: center;
 }
+
+/* El cardio tiene tres huecos —km, min y kcal— y no tiene RPE, así que la columna estrecha
+   del esfuerzo percibido pasa a ser un campo más. */
+.serie.cardio, .serie-cabecera.cardio {
+  grid-template-columns: 26px 1fr 1fr 1fr 40px;
+}
 .serie-cabecera {
   font-size: 10.5px;
   font-weight: 800;
