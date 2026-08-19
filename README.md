@@ -172,7 +172,7 @@ español —archivos, identificadores, clases CSS y variables de tema— y los c
 ```
 src/
   motor/      Cálculo puro y con pruebas.
-  datos/      Los catálogos escritos a mano: ejercicios y alimentos.
+  datos/      Los catálogos escritos a mano: ejercicios, su técnica y alimentos.
   almacen/    Persistencia local sobre IndexedDB.
   ui/         Vistas, piezas comunes, gráficos en SVG y temas.
   nube/       Estimación de comida por foto (ver más abajo).
@@ -180,14 +180,21 @@ api/          Función sin servidor para esa estimación.
 herramientas/ El generador del catálogo de ejercicios para Dart.
 ```
 
-### Regenerar el catálogo de Dart
+### Regenerar los catálogos de Dart
 
-Los ejercicios se añaden en `src/datos/ejercicios.ts` y de ahí salen los dos catálogos:
+Los ejercicios se añaden en `src/datos/ejercicios.ts` y su técnica en `src/datos/tecnica.ts`.
+De ahí salen los dos catálogos de la app de Android:
 
 ```sh
 npx tsc src/datos/ejercicios.ts --outDir .tmp-gen --module es2020 --target es2020
 node herramientas/generar_catalogo_dart.mjs > movil/lib/datos/ejercicios.dart
+
+npx tsc src/datos/tecnica.ts --outDir .tmp-gen --module es2020 --target es2020
+node herramientas/generar_tecnica_dart.mjs > movil/lib/datos/tecnica.dart
 ```
+
+Las pruebas comprueban que los 297 ejercicios tienen técnica y que no sobra ninguna, así que
+añadir un ejercicio y olvidar su explicación pone la suite en rojo en las dos aplicaciones.
 
 ## Qué hay dentro (las dos)
 
@@ -197,7 +204,10 @@ node herramientas/generar_catalogo_dart.mjs > movil/lib/datos/ejercicios.dart
   serie arranca el descanso solo.
 - **Ejercicios** — 297 del catálogo (máquinas, poleas, barra, mancuernas, kettlebell, peso
   corporal, bandas, multipower, anillas, cardio…) más los que crees tú. Cada uno guarda tus
-  récords y su evolución.
+  récords y su evolución, y explica **cómo se hace**: cómo colocarse, cómo es el movimiento y
+  cuál es el fallo típico, con un botón que abre un vídeo del ejercicio. La explicación sale
+  abierta si nunca lo has hecho y plegada si ya es tuyo. En el móvil está además a un toque
+  desde el propio entreno, que es donde de verdad se pregunta uno cómo iba la máquina.
 - **Rutinas** — planes con días («Torso / Pierna»). Al empezar a entrenar eliges un día y los
   ejercicios ya están puestos.
 - **Progreso** — volumen por semana, reparto de series por grupo muscular, tabla de récords y

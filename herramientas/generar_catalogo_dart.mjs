@@ -1,10 +1,12 @@
 /**
  * Genera el catálogo de ejercicios de la app de Android a partir del de la web.
  *
- * Los 280 ejercicios están escritos una sola vez, en `src/datos/ejercicios.ts`. Copiarlos a
- * mano a Dart sería copiar 280 filas y garantizar que dentro de un mes las dos listas no
+ * Los ejercicios están escritos una sola vez, en `src/datos/ejercicios.ts`. Copiarlos a mano a
+ * Dart sería copiar trescientas filas y garantizar que dentro de un mes las dos listas no
  * digan lo mismo: alguien añade una máquina en un sitio y se olvida del otro. Aquí se
  * traducen, y si cambia el original se vuelve a ejecutar esto.
+ *
+ * La técnica de cada ejercicio va en su propio generador: `generar_tecnica_dart.mjs`.
  *
  * Uso:
  *   npx tsc src/datos/ejercicios.ts --outDir .tmp-gen --module es2020 --target es2020

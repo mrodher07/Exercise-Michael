@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fitlog/datos/ejercicios.dart';
+import 'package:fitlog/datos/tecnica.dart';
 import 'package:fitlog/motor/entreno.dart';
 import 'package:fitlog/motor/fechas.dart';
 
@@ -403,6 +404,58 @@ void main() {
       // Dos entrenos al mes también son un historial: a los 21 días, con uno basta.
       expect(tocaRecordarCopia(sinCopia: 1, ultimaCopia: hace2Dias, ahora: ahora), isFalse);
       expect(tocaRecordarCopia(sinCopia: 1, ultimaCopia: hace30Dias, ahora: ahora), isTrue);
+    });
+  });
+
+  group('la técnica generada', () {
+    test('todos los ejercicios del catálogo la tienen', () {
+      final sinTecnica = ejerciciosDeCasa
+          .where((e) => tecnicaDe(e.id) == null)
+          .map((e) => '${e.nombre} (${e.id})')
+          .toList();
+      expect(sinTecnica, isEmpty);
+    });
+
+    test('no sobra ninguna', () {
+      // Una ficha cuyo id ya no existe es texto muerto, y casi siempre significa que alguien
+      // renombró un ejercicio en el catálogo y aquí se quedó lo viejo.
+      final ids = ejerciciosDeCasa.map((e) => e.id).toSet();
+      expect(tecnicas.keys.where((id) => !ids.contains(id)).toList(), isEmpty);
+    });
+
+    test('ninguna está a medias', () {
+      final incompletas = tecnicas.entries
+          .where((x) =>
+              x.value.preparacion.trim().isEmpty ||
+              x.value.ejecucion.trim().isEmpty ||
+              x.value.fallo.trim().isEmpty)
+          .map((x) => x.key)
+          .toList();
+      expect(incompletas, isEmpty);
+    });
+
+    test('el texto ha sobrevivido a pasar por el generador', () {
+      // Los literales se parten en varias líneas al generarlos, y si una se queda sin el
+      // espacio del final salen palabras pegadas. Aquí se notaría.
+      final pegadas = <String>[];
+      for (final entrada in tecnicas.entries) {
+        final t = entrada.value;
+        for (final campo in [t.preparacion, t.ejecucion, t.fallo]) {
+          for (final palabra in campo.split(RegExp(r'[\s,.;:()—«»]+'))) {
+            if (palabra.length > 17) pegadas.add('${entrada.key}: $palabra');
+          }
+        }
+      }
+      expect(pegadas, isEmpty);
+    });
+
+    test('el vídeo es una búsqueda con el nombre del ejercicio', () {
+      final enlace = videoDe('Press de banca con barra');
+      expect(enlace.host, 'www.youtube.com');
+      expect(enlace.path, '/results');
+      // Se lee del parámetro ya descodificado y no de la url en crudo: ahí los espacios van
+      // como «+», que es correcto en una consulta y confunde al leerlo.
+      expect(enlace.queryParameters['search_query'], 'Press de banca con barra técnica');
     });
   });
 }

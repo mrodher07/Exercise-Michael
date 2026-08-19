@@ -17,6 +17,7 @@ import '../motor/fechas.dart';
 import 'estado.dart';
 import 'graficos.dart';
 import 'piezas.dart';
+import 'tecnica.dart';
 import 'tema.dart';
 
 const _tope = 60;
@@ -196,6 +197,11 @@ class _FichaDeEjercicio extends StatelessWidget {
             for (final s in ejercicio.secundarios) EtiquetaPill('+ ${s.texto}'),
           ],
         ),
+        const SizedBox(height: 12),
+        // La técnica va antes que las marcas y abierta si nunca lo has hecho: quien abre la
+        // ficha de un ejercicio que no ha hecho nunca viene a ver cómo se hace, no a mirar un
+        // historial vacío. Si ya lo has entrenado, se queda plegada y manda lo tuyo.
+        PanelDeTecnica(ejercicio: ejercicio, abierto: records.vecesEntrenado == 0),
         const SizedBox(height: 14),
         if (records.vecesEntrenado == 0)
           const Vacio(

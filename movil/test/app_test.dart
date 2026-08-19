@@ -255,4 +255,23 @@ void main() {
 
     otro.dispose();
   });
+
+  testWidgets('la ficha de un ejercicio explica cómo se hace', (probador) async {
+    await abrir(probador);
+    await irA(probador, 'Ejercicios');
+
+    // Se busca uno concreto para no depender de en qué orden aparece la lista.
+    await probador.enterText(find.byType(TextField).first, 'press banca barra');
+    await probador.pumpAndSettle();
+    await probador.tap(find.text('Press de banca con barra').first);
+    await probador.pumpAndSettle();
+
+    // Nunca se ha hecho, así que la técnica sale abierta y con las tres partes.
+    expect(find.text('Cómo se hace'), findsOne);
+    expect(find.text('COLOCACIÓN'), findsOne);
+    expect(find.text('MOVIMIENTO'), findsOne);
+    expect(find.text('EL FALLO TÍPICO'), findsOne);
+    expect(find.textContaining('Junta los omóplatos'), findsOne);
+    expect(find.text('Ver vídeo del ejercicio'), findsOne);
+  });
 }

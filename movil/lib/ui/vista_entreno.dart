@@ -21,6 +21,7 @@ import 'cronometro.dart';
 import 'estado.dart';
 import 'piezas.dart';
 import 'selector.dart';
+import 'tecnica.dart';
 import 'tema.dart';
 
 class VistaEntreno extends StatelessWidget {
@@ -544,6 +545,18 @@ class _LineaDeEjercicio extends StatelessWidget {
                     entreno.ejercicios = orden;
                     estado.entrenoTocado(entreno);
                   },
+                ),
+              // Cómo se hace, a un toque y sin salir del entreno: es la pregunta que aparece
+              // delante de una máquina que no se toca desde hace tres meses.
+              if (ejercicio != null)
+                IconButton(
+                  tooltip: 'Cómo se hace',
+                  icon: const Icon(Icons.help_outline, size: 20),
+                  onPressed: () => abrirHoja(
+                    context,
+                    titulo: ejercicio.nombre,
+                    contenido: (_) => PanelDeTecnica(ejercicio: ejercicio, abierto: true),
+                  ),
                 ),
               IconButton(
                 tooltip: 'Ajustes del ejercicio',

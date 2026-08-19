@@ -37,6 +37,7 @@ import {
   kilos,
 } from './Piezas';
 import { IconoBuscar, IconoChispa, IconoMas, IconoPapelera, IconoPesa } from './Iconos';
+import { FichaDeTecnica } from './Tecnica';
 
 const TOPE = 60;
 
@@ -266,6 +267,11 @@ function FichaDeEjercicio({
             </span>
           ))}
         </div>
+
+        {/* La técnica va antes que las marcas y abierta si nunca lo has hecho: quien abre la
+            ficha de un ejercicio que no ha hecho nunca viene a ver cómo se hace, no a mirar un
+            historial vacío. Si ya lo has entrenado, se pliega y manda lo tuyo. */}
+        <FichaDeTecnica ejercicio={ejercicio} abierto={records.vecesEntrenado === 0} />
 
         {records.vecesEntrenado === 0 ? (
           <Vacio icono={<IconoPesa />} titulo="Nunca lo has hecho">
