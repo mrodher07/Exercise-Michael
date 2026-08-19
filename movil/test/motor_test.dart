@@ -7,6 +7,7 @@ library;
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:fitlog/datos/ejercicios.dart';
+import 'package:fitlog/almacen/almacen.dart';
 import 'package:fitlog/datos/tecnica.dart';
 import 'package:fitlog/motor/entreno.dart';
 import 'package:fitlog/motor/fechas.dart';
@@ -456,6 +457,122 @@ void main() {
       // Se lee del parámetro ya descodificado y no de la url en crudo: ahí los espacios van
       // como «+», que es correcto en una consulta y confunde al leerlo.
       expect(enlace.queryParameters['search_query'], 'Press de banca con barra técnica');
+    });
+  });
+
+  group('un entreno convertido en rutina', () {
+    Entreno conSeries(List<SerieRegistrada> series, {int descanso = 90, String? notas}) => Entreno(
+          id: 'e1',
+          fecha: '2026-08-19',
+          nombre: 'Torso libre',
+          comienzo: DateTime.parse('2026-08-19T10:00:00'),
+          fin: DateTime.parse('2026-08-19T11:00:00'),
+          ejercicios: [
+            EjercicioDelEntreno(
+              id: 'l1',
+              ejercicioId: 'press-de-banca-con-barra',
+              series: series,
+              descanso: descanso,
+              notas: notas,
+            ),
+          ],
+        );
+
+    test('las repeticiones iguales salen como un número', () {
+      final dia = diaDesdeEntreno(conSeries([serie(80, 8), serie(80, 8), serie(80, 8)]));
+      expect(dia.ejercicios.single.series, 3);
+      expect(dia.ejercicios.single.reps, '8');
+      expect(dia.ejercicios.single.peso, 80);
+    });
+
+    test('las repeticiones distintas salen como un rango', () {
+      final dia = diaDesdeEntreno(conSeries([serie(80, 10), serie(85, 8), serie(85, 6)]));
+      expect(dia.ejercicios.single.reps, '6-10');
+      // El peso que se propone es el más alto, que es el que uno intenta repetir.
+      expect(dia.ejercicios.single.peso, 85);
+    });
+
+    test('el calentamiento y lo no marcado no entran', () {
+      final dia = diaDesdeEntreno(conSeries([
+        serie(40, 12, tipo: TipoDeSerie.calentamiento),
+        serie(80, 8),
+        serie(80, 8),
+        serie(100, 1, hecha: false),
+      ]));
+      expect(dia.ejercicios.single.series, 2);
+      expect(dia.ejercicios.single.reps, '8');
+      // Ni el peso del calentamiento ni el de la serie que no se llegó a hacer.
+      expect(dia.ejercicios.single.peso, 80);
+    });
+
+    test('si no se marcó nada se copian todas, en vez de devolver un día vacío', () {
+      final dia = diaDesdeEntreno(conSeries([serie(60, 10, hecha: false), serie(60, 9, hecha: false)]));
+      expect(dia.ejercicios.single.series, 2);
+      expect(dia.ejercicios.single.reps, '9-10');
+    });
+
+    test('el descanso y las notas de la línea se conservan', () {
+      final dia = diaDesdeEntreno(conSeries([serie(80, 8)], descanso: 180, notas: 'con pausa'));
+      expect(dia.ejercicios.single.descanso, 180);
+      expect(dia.ejercicios.single.notas, 'con pausa');
+    });
+
+    test('un isométrico se apunta en tiempo y no en repeticiones', () {
+      final entreno = Entreno(
+        id: 'e2',
+        fecha: '2026-08-19',
+        nombre: 'Core',
+        comienzo: DateTime.parse('2026-08-19T10:00:00'),
+        fin: DateTime.parse('2026-08-19T10:20:00'),
+        ejercicios: [
+          EjercicioDelEntreno(
+            id: 'l1',
+            ejercicioId: 'plancha',
+            series: [
+              SerieRegistrada(segundos: 45, hecha: true),
+              SerieRegistrada(segundos: 60, hecha: true),
+            ],
+          ),
+        ],
+      );
+      final dia = diaDesdeEntreno(entreno);
+      expect(dia.ejercicios.single.reps, '1 min');
+      expect(dia.ejercicios.single.peso, isNull);
+    });
+
+    test('el peso corporal sin lastre no propone peso', () {
+      final entreno = Entreno(
+        id: 'e3',
+        fecha: '2026-08-19',
+        nombre: 'Tirón',
+        comienzo: DateTime.parse('2026-08-19T10:00:00'),
+        fin: DateTime.parse('2026-08-19T10:30:00'),
+        ejercicios: [
+          EjercicioDelEntreno(
+            id: 'l1',
+            ejercicioId: 'dominadas',
+            series: [SerieRegistrada(reps: 8, hecha: true), SerieRegistrada(reps: 6, hecha: true)],
+          ),
+        ],
+      );
+      expect(diaDesdeEntreno(entreno).ejercicios.single.peso, isNull);
+      expect(diaDesdeEntreno(entreno).ejercicios.single.reps, '6-8');
+    });
+
+    test('la rutina nueva se llama como el entreno y tiene un día', () {
+      final rutina = rutinaDesdeEntreno(conSeries([serie(80, 8)]));
+      expect(rutina.nombre, 'Torso libre');
+      expect(rutina.dias, hasLength(1));
+      expect(rutina.dias.single.nombre, 'Día 1');
+      expect(rutina.dias.single.ejercicios, hasLength(1));
+    });
+
+    test('cada día y cada rutina nacen con id propio', () {
+      // Si compartieran id con otra cosa, editar una tocaría la otra.
+      final a = rutinaDesdeEntreno(conSeries([serie(80, 8)]));
+      final b = rutinaDesdeEntreno(conSeries([serie(80, 8)]));
+      expect(a.id, isNot(b.id));
+      expect(a.dias.single.id, isNot(b.dias.single.id));
     });
   });
 }

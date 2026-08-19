@@ -274,4 +274,69 @@ void main() {
     expect(find.textContaining('Junta los omóplatos'), findsOne);
     expect(find.text('Ver vídeo del ejercicio'), findsOne);
   });
+
+  testWidgets('un entreno libre se guarda como rutina', (probador) async {
+    // Un entreno ya cerrado, con dos ejercicios y series distintas, escrito en el almacén.
+    final entreno = Entreno(
+      id: 'libre',
+      fecha: hoy(),
+      nombre: 'Torso libre',
+      comienzo: DateTime.now().subtract(const Duration(hours: 1)),
+      fin: DateTime.now(),
+      ejercicios: [
+        EjercicioDelEntreno(
+          id: 'l1',
+          ejercicioId: 'press-de-banca-con-barra',
+          series: [
+            SerieRegistrada(peso: 40, reps: 12, hecha: true, tipo: TipoDeSerie.calentamiento),
+            SerieRegistrada(peso: 80, reps: 8, hecha: true),
+            SerieRegistrada(peso: 85, reps: 6, hecha: true),
+          ],
+        ),
+        EjercicioDelEntreno(
+          id: 'l2',
+          ejercicioId: 'dominadas',
+          series: [SerieRegistrada(reps: 8, hecha: true), SerieRegistrada(reps: 6, hecha: true)],
+        ),
+      ],
+    );
+    await probador.runAsync(() => Almacen(carpeta: carpeta).guardarEntrenos([entreno]));
+
+    final otro = Estado(almacen: Almacen(carpeta: carpeta));
+    await probador.runAsync(() => otro.cargar());
+    await probador.pumpWidget(App(estado: otro));
+    await probador.pumpAndSettle();
+
+    await probador.tap(find.widgetWithText(NavigationDestination, 'Entrenar'));
+    await probador.pumpAndSettle();
+
+    // Se abre el entreno del historial y se guarda como rutina nueva.
+    await pulsar(probador, find.text('Torso libre').first);
+    await pulsar(probador, find.text('Guardar como rutina'));
+
+    // La vista previa dice lo que va a guardar antes de decidir: el calentamiento no cuenta,
+    // así que del press quedan dos series de 6 a 8 con el peso más alto. Y las dominadas, que
+    // coinciden en series y repeticiones, salen sin peso porque no llevaban lastre.
+    expect(find.text('2×6-8 · 85 kg'), findsOne);
+    expect(find.text('2×6-8'), findsOne);
+
+    await pulsar(probador, find.text('Crear una rutina nueva'));
+
+    expect(otro.rutinas, hasLength(1));
+    final rutina = otro.rutinas.single;
+    expect(rutina.nombre, 'Torso libre');
+    expect(rutina.dias, hasLength(1));
+
+    final plantillas = rutina.dias.single.ejercicios;
+    expect(plantillas, hasLength(2));
+    expect(plantillas.first.ejercicioId, 'press-de-banca-con-barra');
+    expect(plantillas.first.series, 2);
+    expect(plantillas.first.reps, '6-8');
+    expect(plantillas.first.peso, 85);
+    // Las dominadas van sin peso porque no llevaban lastre.
+    expect(plantillas.last.peso, isNull);
+    expect(plantillas.last.reps, '6-8');
+
+    otro.dispose();
+  });
 }

@@ -141,6 +141,7 @@ export function App() {
               guardar={entrenos.guardar}
               guardarYa={entrenos.guardarYa}
               borrar={entrenos.borrar}
+              guardarRutina={rutinas.guardar}
               avisar={avisar}
               onDescansar={empezarDescanso}
             />

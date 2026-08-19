@@ -465,6 +465,82 @@ Entreno entrenoVacio([String nombre = 'Entreno libre']) {
   );
 }
 
+/// El día de rutina que sale de un entreno ya hecho.
+///
+/// Existe porque los entrenos buenos casi siempre nacen sueltos: uno entra sin plan, va
+/// eligiendo sobre la marcha y al terminar piensa «esto lo quiero repetir». Volver a escribirlo
+/// a mano en una rutina es media docena de formularios, y por eso no se hace nunca.
+///
+/// Lo que se copia es **lo que se hizo de verdad**, no lo que estaba apuntado:
+///
+///  · Las series que cuentan, es decir las marcadas y sin el calentamiento. Si no se marcó
+///    ninguna, se cuentan todas: es preferible eso a devolver un día vacío.
+///  · Las repeticiones como un rango si variaron (`8-10`) y como un número si fueron iguales.
+///    Un rango es exactamente lo que uno se apunta en un papel, y evita la falsa precisión de
+///    prometer diez repeticiones clavadas la semana que viene.
+///  · El peso más alto de esas series, que es el que uno intenta repetir o superar.
+///  · El descanso y las notas de la línea, tal cual estaban.
+DiaDeRutina diaDesdeEntreno(Entreno entreno, {String? nombre}) {
+  return DiaDeRutina(
+    id: nuevoId(),
+    nombre: nombre ?? entreno.nombre,
+    ejercicios: [
+      for (final linea in entreno.ejercicios)
+        _plantillaDesde(linea),
+    ],
+  );
+}
+
+/// Una rutina nueva de un solo día, sacada de un entreno.
+Rutina rutinaDesdeEntreno(Entreno entreno, {String? nombre, String? nombreDelDia}) => Rutina(
+      id: nuevoId(),
+      nombre: nombre ?? entreno.nombre,
+      dias: [diaDesdeEntreno(entreno, nombre: nombreDelDia ?? 'Día 1')],
+    );
+
+PlantillaEjercicio _plantillaDesde(EjercicioDelEntreno linea) {
+  final cuentan = linea.series.where((s) => s.cuenta).toList();
+  final series = cuentan.isNotEmpty ? cuentan : linea.series;
+
+  return PlantillaEjercicio(
+    ejercicioId: linea.ejercicioId,
+    series: series.isEmpty ? 1 : series.length,
+    reps: _repsDe(series),
+    peso: _pesoDe(series),
+    descanso: linea.descanso,
+    notas: linea.notas,
+  );
+}
+
+/// Las repeticiones como se escriben en una rutina: `10`, `8-10`, `45 s` o `5 km`.
+String _repsDe(List<SerieRegistrada> series) {
+  final reps = series.map((s) => s.reps).whereType<int>().toList();
+  if (reps.isNotEmpty) {
+    final min = reps.reduce((a, b) => a < b ? a : b);
+    final max = reps.reduce((a, b) => a > b ? a : b);
+    return min == max ? '$min' : '$min-$max';
+  }
+  // Isométricos y cardio no tienen repeticiones; se apunta lo que sí tienen.
+  final segundos = series.map((s) => s.segundos).whereType<int>().toList();
+  if (segundos.isNotEmpty) {
+    final max = segundos.reduce((a, b) => a > b ? a : b);
+    return max >= 60 && max % 60 == 0 ? '${max ~/ 60} min' : '$max s';
+  }
+  final distancias = series.map((s) => s.distancia).whereType<double>().toList();
+  if (distancias.isNotEmpty) {
+    final max = distancias.reduce((a, b) => a > b ? a : b);
+    final texto = max == max.roundToDouble() ? '${max.round()}' : max.toStringAsFixed(1);
+    return '$texto km';
+  }
+  return '8-10';
+}
+
+double? _pesoDe(List<SerieRegistrada> series) {
+  final pesos = series.map((s) => s.peso).whereType<double>().where((p) => p > 0).toList();
+  if (pesos.isEmpty) return null;
+  return pesos.reduce((a, b) => a > b ? a : b);
+}
+
 Rutina rutinaVacia([String nombre = 'Rutina nueva']) => Rutina(
       id: nuevoId(),
       nombre: nombre,

@@ -829,10 +829,17 @@ class Aviso extends StatelessWidget {
 
 /// Un aviso corto que se va solo. Para confirmar lo que ya ha pasado, nunca para preguntar:
 /// una pregunta que desaparece sola no es una pregunta.
-void avisar(BuildContext context, String texto) {
+void avisar(BuildContext context, String texto, {String? accion, VoidCallback? onAccion}) {
   ScaffoldMessenger.of(context)
     ..hideCurrentSnackBar()
-    ..showSnackBar(SnackBar(content: Text(texto), duration: const Duration(seconds: 3)));
+    ..showSnackBar(SnackBar(
+      content: Text(texto),
+      // Con acción dura más: cuatro segundos no dan para leer y decidir.
+      duration: Duration(seconds: accion == null ? 3 : 8),
+      action: accion == null || onAccion == null
+          ? null
+          : SnackBarAction(label: accion, onPressed: onAccion),
+    ));
 }
 
 /// Abre una hoja que sube desde abajo, con el teclado teniéndose en cuenta.

@@ -249,6 +249,30 @@ class Estado extends ChangeNotifier with WidgetsBindingObserver {
     return rutina;
   }
 
+  /// Guarda un entreno ya hecho como rutina nueva.
+  ///
+  /// Es el atajo para el caso de siempre: entras sin plan, sale un entreno que te gusta y
+  /// quieres repetirlo. Copiarlo a mano en una rutina son seis formularios, así que no se hace.
+  Rutina crearRutinaDesdeEntreno(Entreno entreno, {String? nombre}) {
+    final rutina = rutinaDesdeEntreno(entreno, nombre: nombre);
+    _rutinas = [rutina, ..._rutinas];
+    _ordenarRutinas();
+    _anotarEscritura(_almacen.guardarRutinas(_rutinas));
+    notifyListeners();
+    return rutina;
+  }
+
+  /// Añade lo que se hizo en un entreno como un día más de una rutina que ya existe.
+  DiaDeRutina anadirDiaDesdeEntreno(Rutina rutina, Entreno entreno, {String? nombre}) {
+    final dia = diaDesdeEntreno(entreno, nombre: nombre);
+    rutina.dias = [...rutina.dias, dia];
+    rutina.actualizadoEn = DateTime.now();
+    _ordenarRutinas();
+    _anotarEscritura(_almacen.guardarRutinas(_rutinas));
+    notifyListeners();
+    return dia;
+  }
+
   void rutinaTocada(Rutina rutina) {
     rutina.actualizadoEn = DateTime.now();
     _ordenarRutinas();

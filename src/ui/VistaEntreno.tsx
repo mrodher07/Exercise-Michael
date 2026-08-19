@@ -50,6 +50,7 @@ import {
   IconoChispa,
   IconoJugar,
   IconoLapiz,
+  IconoLista,
   IconoMas,
   IconoPapelera,
   IconoPesa,
@@ -67,6 +68,8 @@ interface Props {
   guardar: (e: Entreno) => void;
   guardarYa: (e: Entreno) => Promise<void>;
   borrar: (e: Entreno) => Promise<void>;
+  /** Para guardar un entreno como rutina, o añadirlo como día de una que ya existe. */
+  guardarRutina: (r: Rutina) => void;
   avisar: (texto: string) => void;
   onDescansar: (segundos: number) => void;
 }
@@ -79,9 +82,126 @@ export function VistaEntreno(props: Props) {
   );
 }
 
+/**
+ * Convertir un entreno en rutina, o añadirlo como un día de una que ya existe.
+ *
+ * Enseña antes lo que va a guardar. Sin esa vista previa hay que guardarlo, ir a Rutinas y
+ * comprobar si ha salido lo que uno esperaba.
+ */
+function GuardarComoRutina({
+  entreno,
+  porId,
+  rutinas,
+  guardarRutina,
+  avisar,
+  onCerrar,
+}: {
+  entreno: Entreno;
+  porId: Map<string, Ejercicio>;
+  rutinas: Rutina[];
+  guardarRutina: (r: Rutina) => void;
+  avisar: (texto: string) => void;
+  onCerrar: () => void;
+}) {
+  const [nombre, setNombre] = useState(entreno.nombre);
+  const vistaPrevia = useMemo(() => almacen.diaDesdeEntreno(entreno), [entreno]);
+  const elegido = nombre.trim() || entreno.nombre;
+
+  const crear = () => {
+    const rutina = almacen.rutinaDesdeEntreno(entreno, elegido);
+    guardarRutina(rutina);
+    avisar(`Rutina «${rutina.nombre}» creada`);
+    onCerrar();
+  };
+
+  const anadirA = (rutina: Rutina) => {
+    const dia = almacen.diaDesdeEntreno(entreno, elegido);
+    guardarRutina({ ...rutina, dias: [...rutina.dias, dia] });
+    avisar(`«${elegido}» añadido a ${rutina.nombre}`);
+    onCerrar();
+  };
+
+  return (
+    <Hoja titulo="Guardar como rutina" onCerrar={onCerrar}>
+      <div className="pila">
+        <div className="panel apagado">
+          <p className="pequeno debil">
+            Se copia lo que hiciste: las series que marcaste, sin calentamientos, con su rango de
+            repeticiones y el peso más alto de cada ejercicio.
+          </p>
+          {vistaPrevia.ejercicios.length === 0 ? (
+            <p className="pequeno" style={{ color: 'var(--aviso)' }}>
+              Este entreno no tiene ejercicios, así que la rutina saldría vacía.
+            </p>
+          ) : (
+            vistaPrevia.ejercicios.map((plantilla, i) => (
+              <div key={`${plantilla.ejercicioId}-${i}`} className="fila entre">
+                <span className="gruesa pequeno">
+                  {porId.get(plantilla.ejercicioId)?.nombre ?? plantilla.ejercicioId}
+                </span>
+                <span className="pequeno debil">
+                  {plantilla.series}×{plantilla.reps}
+                  {plantilla.peso !== undefined && ` · ${kilos(plantilla.peso)} kg`}
+                </span>
+              </div>
+            ))
+          )}
+        </div>
+
+        <Campo
+          etiqueta="Nombre"
+          pista="El de la rutina nueva, o el del día que se añade a una que ya tienes."
+        >
+          <input
+            type="text"
+            value={nombre}
+            onChange={(e) => setNombre(e.target.value)}
+            autoComplete="off"
+          />
+        </Campo>
+
+        <button type="button" className="accion principal" onClick={crear}>
+          <IconoMas />
+          Crear una rutina nueva
+        </button>
+
+        {rutinas.length > 0 && (
+          <Seccion titulo="O añadirlo como un día de">
+            <div className="lista">
+              {rutinas.map((rutina) => (
+                <button
+                  key={rutina.id}
+                  type="button"
+                  className="fila-lista"
+                  onClick={() => anadirA(rutina)}
+                >
+                  <span className="nombre">
+                    {rutina.nombre}
+                    <span className="meta">{contar(rutina.dias.length, 'día', 'días', 'vacía')}</span>
+                  </span>
+                  <span className="valor">+ día</span>
+                </button>
+              ))}
+            </div>
+          </Seccion>
+        )}
+      </div>
+    </Hoja>
+  );
+}
+
 // ─────────────────────────── Sin entreno: empezar o repasar ───────────────────────────
 
-function SinEntreno({ entrenos, rutinas, porId, ajustes, guardar, borrar }: Props) {
+function SinEntreno({
+  entrenos,
+  rutinas,
+  porId,
+  ajustes,
+  guardar,
+  borrar,
+  guardarRutina,
+  avisar,
+}: Props) {
   const [abierto, setAbierto] = useState<Entreno | null>(null);
   const hechos = entrenos.filter((e) => e.fin !== null);
 
@@ -192,6 +312,9 @@ function SinEntreno({ entrenos, rutinas, porId, ajustes, guardar, borrar }: Prop
         <DetalleDeEntreno
           entreno={abierto}
           porId={porId}
+          rutinas={rutinas}
+          guardarRutina={guardarRutina}
+          avisar={avisar}
           onCerrar={() => setAbierto(null)}
           onBorrar={async () => {
             await borrar(abierto);
@@ -206,15 +329,22 @@ function SinEntreno({ entrenos, rutinas, porId, ajustes, guardar, borrar }: Prop
 function DetalleDeEntreno({
   entreno,
   porId,
+  rutinas,
+  guardarRutina,
+  avisar,
   onCerrar,
   onBorrar,
 }: {
   entreno: Entreno;
   porId: Map<string, Ejercicio>;
+  rutinas: Rutina[];
+  guardarRutina: (r: Rutina) => void;
+  avisar: (texto: string) => void;
   onCerrar: () => void;
   onBorrar: () => Promise<void>;
 }) {
   const [confirmando, setConfirmando] = useState(false);
+  const [guardandoRutina, setGuardandoRutina] = useState(false);
 
   return (
     <Hoja
@@ -251,6 +381,25 @@ function DetalleDeEntreno({
         </div>
 
         {entreno.notas && <p className="tenue pequeno">{entreno.notas}</p>}
+
+        {/* Guardar el entreno como rutina: los planes buenos casi nunca se escriben, se
+            entrenan. Uno entra sin plan, tira de lo que hay libre y al terminar piensa «esto
+            lo repito el jueves»; copiarlo a mano son seis formularios y no se copia. */}
+        <button type="button" className="accion" onClick={() => setGuardandoRutina(true)}>
+          <IconoLista />
+          Guardar como rutina
+        </button>
+
+        {guardandoRutina && (
+          <GuardarComoRutina
+            entreno={entreno}
+            porId={porId}
+            rutinas={rutinas}
+            guardarRutina={guardarRutina}
+            avisar={avisar}
+            onCerrar={() => setGuardandoRutina(false)}
+          />
+        )}
 
         {entreno.ejercicios.map((linea) => {
           const ejercicio = porId.get(linea.ejercicioId);

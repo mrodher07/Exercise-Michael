@@ -8,7 +8,7 @@
  */
 
 import { nuevoId, transaccion, vaciarTodo } from './bd';
-import type { Entreno } from '../motor/entreno';
+import type { Entreno, SerieRegistrada } from '../motor/entreno';
 import type { Ejercicio } from '../datos/ejercicios';
 import type { Alimento } from '../datos/alimentos';
 import type { Actividad, Macros, Meta, Sexo, Toma } from '../motor/nutricion';
@@ -26,6 +26,34 @@ export type { Entreno };
  * escribe como se habla. El número exacto se apunta al hacer la serie, que es donde sí
  * tiene que ser un número.
  */
+/** Las repeticiones como se escriben en una rutina: `10`, `8-10`, `45 s` o `5 km`. */
+function repsDeSeries(series: SerieRegistrada[]): string {
+  const reps = series.map((s) => s.reps).filter((r): r is number => typeof r === 'number');
+  if (reps.length > 0) {
+    const min = Math.min(...reps);
+    const max = Math.max(...reps);
+    return min === max ? `${min}` : `${min}-${max}`;
+  }
+  /* Isométricos y cardio no tienen repeticiones; se apunta lo que sí tienen. */
+  const segundos = series.map((s) => s.segundos).filter((x): x is number => typeof x === 'number');
+  if (segundos.length > 0) {
+    const max = Math.max(...segundos);
+    return max >= 60 && max % 60 === 0 ? `${max / 60} min` : `${max} s`;
+  }
+  const distancias = series.map((s) => s.distancia).filter((x): x is number => typeof x === 'number');
+  if (distancias.length > 0) {
+    const max = Math.max(...distancias);
+    return `${Number.isInteger(max) ? max : max.toFixed(1)} km`;
+  }
+  return '8-10';
+}
+
+/** El peso más alto de las series, que es el que uno intenta repetir. */
+function pesoDeSeries(series: SerieRegistrada[]): number | undefined {
+  const pesos = series.map((s) => s.peso).filter((p): p is number => typeof p === 'number' && p > 0);
+  return pesos.length > 0 ? Math.max(...pesos) : undefined;
+}
+
 export interface PlantillaEjercicio {
   ejercicioId: string;
   series: number;
@@ -204,6 +232,47 @@ export const almacen = {
 
   async borrarRutina(id: string): Promise<void> {
     await transaccion('rutinas', 'readwrite', (a) => a.delete(id));
+  },
+
+  /**
+   * El día de rutina que sale de un entreno ya hecho.
+   *
+   * Existe porque los entrenos buenos casi siempre nacen sueltos: uno entra sin plan, va
+   * eligiendo sobre la marcha y al terminar piensa «esto lo quiero repetir». Volver a
+   * escribirlo a mano en una rutina es media docena de formularios, y por eso no se hace.
+   *
+   * Se copia **lo que se hizo de verdad**: las series marcadas y sin calentamiento, las
+   * repeticiones como rango si variaron, y el peso más alto, que es el que uno intenta
+   * repetir o superar.
+   */
+  diaDesdeEntreno(entreno: Entreno, nombre?: string): DiaDeRutina {
+    return {
+      id: nuevoId(),
+      nombre: nombre ?? entreno.nombre,
+      ejercicios: entreno.ejercicios.map((linea) => {
+        const cuentan = linea.series.filter((s) => s.hecha && s.tipo !== 'calentamiento');
+        /* Si no se marcó ninguna se cuentan todas: mejor eso que un día vacío. */
+        const series = cuentan.length > 0 ? cuentan : linea.series;
+        return {
+          ejercicioId: linea.ejercicioId,
+          series: Math.max(1, series.length),
+          reps: repsDeSeries(series),
+          peso: pesoDeSeries(series),
+          descanso: linea.descanso,
+          notas: linea.notas,
+        };
+      }),
+    };
+  },
+
+  /** Una rutina nueva de un solo día, sacada de un entreno. */
+  rutinaDesdeEntreno(entreno: Entreno, nombre?: string, nombreDelDia?: string): Rutina {
+    return {
+      id: nuevoId(),
+      actualizadoEn: new Date().toISOString(),
+      nombre: nombre ?? entreno.nombre,
+      dias: [this.diaDesdeEntreno(entreno, nombreDelDia ?? 'Día 1')],
+    };
   },
 
   rutinaVacia(nombre = 'Rutina nueva'): Rutina {

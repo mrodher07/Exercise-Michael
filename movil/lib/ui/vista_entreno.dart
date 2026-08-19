@@ -220,6 +220,13 @@ class _DetalleDeEntreno extends StatelessWidget {
           ),
           const SizedBox(height: 10),
         ],
+        FilledButton.icon(
+          onPressed: () => guardarComoRutina(context, estado, entreno),
+          icon: const Icon(Icons.event_repeat),
+          label: const Text('Guardar como rutina'),
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+        ),
+        const SizedBox(height: 8),
         OutlinedButton.icon(
           onPressed: () async {
             final seguro = await confirmar(
@@ -415,9 +422,24 @@ class _EnCurso extends StatelessWidget {
 
     if (confirmado != true || !context.mounted) return;
 
+    // El contexto para después: al terminar el entreno esta pantalla se sustituye por la de
+    // «sin entreno», así que su contexto deja de estar montado y no sirve para abrir nada. El
+    // del navegador vive lo que viva la aplicación.
+    final contextoDurable = Navigator.of(context).context;
+
+    // Ofrecer guardarlo como rutina aquí y no sólo en el historial: es el momento exacto en
+    // que uno piensa «esto lo repito», y media hora después ya no vuelve a buscarlo.
+    final ofrecerRutina = entreno.rutinaId == null && entreno.ejercicios.isNotEmpty;
+    void guardar() => guardarComoRutina(contextoDurable, estado, entreno);
+
     final batidos = estado.terminarEntreno(entreno);
     if (batidos.isEmpty) {
-      avisar(context, 'Entreno guardado · ${contar(entreno.seriesHechas, 'serie', 'series')}');
+      avisar(
+        context,
+        'Entreno guardado · ${contar(entreno.seriesHechas, 'serie', 'series')}',
+        accion: ofrecerRutina ? 'Guardar como rutina' : null,
+        onAccion: ofrecerRutina ? guardar : null,
+      );
     } else {
       final primero = estado.nombreDeEjercicio(batidos.first.ejercicioId);
       avisar(
@@ -425,6 +447,8 @@ class _EnCurso extends StatelessWidget {
         batidos.length == 1
             ? '¡Récord en $primero!'
             : '¡${batidos.length} récords, empezando por $primero!',
+        accion: ofrecerRutina ? 'Guardar como rutina' : null,
+        onAccion: ofrecerRutina ? guardar : null,
       );
     }
   }
@@ -923,5 +947,144 @@ class _FilaDeSerie extends StatelessWidget {
         estado.entrenoTocado(entreno);
       },
     );
+  }
+}
+
+// ─────────────────── Guardar un entreno como rutina ───────────────────
+
+/// Abre la hoja para convertir un entreno en rutina.
+///
+/// Existe porque las rutinas buenas casi nunca se escriben: se entrenan. Uno entra sin plan,
+/// va tirando de lo que hay libre y al terminar piensa «esto lo repito el jueves». Copiarlo a
+/// mano son seis formularios, así que no se copia y se pierde.
+Future<void> guardarComoRutina(BuildContext context, Estado estado, Entreno entreno) async {
+  final hecho = await abrirHoja<String>(
+    context,
+    titulo: 'Guardar como rutina',
+    contenido: (_) => _GuardarComoRutina(entreno: entreno, estado: estado),
+  );
+  if (hecho != null && context.mounted) avisar(context, hecho);
+}
+
+class _GuardarComoRutina extends StatefulWidget {
+  const _GuardarComoRutina({required this.entreno, required this.estado});
+
+  final Entreno entreno;
+  final Estado estado;
+
+  @override
+  State<_GuardarComoRutina> createState() => _GuardarComoRutinaState();
+}
+
+class _GuardarComoRutinaState extends State<_GuardarComoRutina> {
+  late final TextEditingController _nombre =
+      TextEditingController(text: widget.entreno.nombre);
+
+  @override
+  void dispose() {
+    _nombre.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final c = ColoresFitLog.de(context);
+    final estado = widget.estado;
+    final vistaPrevia = diaDesdeEntreno(widget.entreno);
+
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: [
+        // Antes de decidir, qué es exactamente lo que se va a guardar. Sin esto hay que
+        // guardarlo, ir a Rutinas y comprobar si ha salido lo que uno esperaba.
+        Panel(
+          apagado: true,
+          hijo: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Se copia lo que hiciste: las series que marcaste, sin calentamientos, con su '
+                'rango de repeticiones y el peso más alto de cada ejercicio.',
+                style: TextStyle(fontSize: 12.5, height: 1.45, color: c.textoDebil),
+              ),
+              const SizedBox(height: 10),
+              for (final plantilla in vistaPrevia.ejercicios)
+                Padding(
+                  padding: const EdgeInsets.only(bottom: 4),
+                  child: Row(
+                    children: [
+                      Expanded(
+                        child: Text(
+                          estado.nombreDeEjercicio(plantilla.ejercicioId),
+                          style: const TextStyle(fontSize: 13.5, fontWeight: FontWeight.w600),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                        ),
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        '${plantilla.series}×${plantilla.reps}'
+                        '${plantilla.peso == null ? '' : ' · ${kilos(plantilla.peso!)} kg'}',
+                        style: TextStyle(fontSize: 12.5, color: c.textoDebil),
+                      ),
+                    ],
+                  ),
+                ),
+              if (vistaPrevia.ejercicios.isEmpty)
+                Text(
+                  'Este entreno no tiene ejercicios, así que la rutina saldría vacía.',
+                  style: TextStyle(fontSize: 12.5, color: c.aviso),
+                ),
+            ],
+          ),
+        ),
+        const SizedBox(height: 14),
+        TextField(
+          controller: _nombre,
+          decoration: const InputDecoration(
+            labelText: 'Nombre',
+            helperText: 'El de la rutina nueva, o el del día que se añade a una que ya tienes.',
+          ),
+          textCapitalization: TextCapitalization.sentences,
+        ),
+        const SizedBox(height: 16),
+        FilledButton.icon(
+          onPressed: () {
+            final rutina = estado.crearRutinaDesdeEntreno(widget.entreno, nombre: _nombreElegido);
+            Navigator.of(context).pop('Rutina «${rutina.nombre}» creada');
+          },
+          icon: const Icon(Icons.add),
+          label: const Text('Crear una rutina nueva'),
+          style: FilledButton.styleFrom(minimumSize: const Size(0, 48)),
+        ),
+        if (estado.rutinas.isNotEmpty) ...[
+          const SizedBox(height: 18),
+          const TituloDeSeccion('O añadirlo como un día de'),
+          ListaEnPanel(
+            filas: [
+              for (final rutina in estado.rutinas)
+                FilaDeLista(
+                  icono: Icons.calendar_month,
+                  nombre: rutina.nombre,
+                  meta: contar(rutina.dias.length, 'día', 'días', 'vacía'),
+                  valor: '+ día',
+                  onPulsar: () {
+                    estado.anadirDiaDesdeEntreno(rutina, widget.entreno, nombre: _nombreElegido);
+                    Navigator.of(context).pop(
+                      '«$_nombreElegido» añadido a ${rutina.nombre}',
+                    );
+                  },
+                ),
+            ],
+          ),
+        ],
+      ],
+    );
+  }
+
+  /// El nombre escrito, o el del entreno si se ha dejado en blanco.
+  String get _nombreElegido {
+    final escrito = _nombre.text.trim();
+    return escrito.isEmpty ? widget.entreno.nombre : escrito;
   }
 }

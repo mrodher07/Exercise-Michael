@@ -209,7 +209,10 @@ añadir un ejercicio y olvidar su explicación pone la suite en rojo en las dos 
   abierta si nunca lo has hecho y plegada si ya es tuyo. En el móvil está además a un toque
   desde el propio entreno, que es donde de verdad se pregunta uno cómo iba la máquina.
 - **Rutinas** — planes con días («Torso / Pierna»). Al empezar a entrenar eliges un día y los
-  ejercicios ya están puestos.
+  ejercicios ya están puestos. Y al revés: un entreno libre se puede **guardar como rutina** o
+  añadir como un día más de una que ya tengas, copiando lo que hiciste de verdad —las series
+  marcadas, sin calentamientos, con su rango de repeticiones y el peso más alto—. Se ofrece al
+  terminar el entreno, que es cuando uno piensa «esto lo repito», y también desde el historial.
 - **Progreso** — volumen por semana, reparto de series por grupo muscular, tabla de récords y
   peso corporal con sus perímetros.
 - **Ajustes** — tema claro u oscuro, descanso por defecto, copia de seguridad.
